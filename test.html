@@ -1,0 +1,124 @@
+<!DOCTYPE HTML>
+<html>
+<body style="overflow: hidden; margin: none; border: none; outline: none">
+	<style>
+	canvas{
+		outline: 5px solid black;
+	}
+	html{
+		cursor: url("cursor.png") 0 0, pointer;
+	}
+</style>
+	<script>
+		function canvasGen(){
+			var temp = document.createElement("CANVAS");
+			temp.id = "screen";
+			temp.width = window.innerHeight-20;
+			temp.height = window.innerHeight-20;
+			temp.style=`position: fixed; top: 10px; left: ${(window.innerHeight-20)/2}px;`;
+			document.body.appendChild(temp);
+			return {
+				width: window.innerHeight-20,
+				height: window.innerHeight-20,
+				x: window.innerWidth/2,
+				y: 10,
+				ctx: temp.getContext("2d"),
+			}
+		}
+		function createEntity(){
+
+		}
+	</script>
+	<script>
+		async function loadImages(arrImages){
+			var temp = {};
+			for (var i = 0; i < arrImages.length; i++) {
+				var other = new Image();
+				other.src = arrImages[i];
+				await new Promise((resolve)=>{
+					other.onload = ()=>{
+						resolve();
+					}
+				});
+				temp[arrImages[i]] = other;
+			}
+			return temp;
+		}
+		var allEntities = [];
+		class entity{
+			constructor(image){
+				this.img = image;
+				this.x = 0;
+				this.y = 0;
+				allEntities.push(this);
+				//this.width = 64;
+				//this.height = 64;
+			}
+			draw(ctx){
+				ctx.drawImage(this.img, this.x, this.y);
+			}
+		}
+		class key{
+			constructor(key, whenDown, whenUp, speed){
+				this.mainKey = key;
+				this.keyDown = false;
+				document.addEventListener("keydown", (e)=>{
+					if (e.key != this.mainKey) return;
+					if (!this.keyDown) {
+						this.keyDown = true;
+						whenDown();
+						this.keyDown = setInterval(whenDown, speed);
+					}
+				});
+				document.addEventListener("keyup", (e)=>{
+					if (e.key != this.mainKey) return;					
+					if (this.keyDown) {
+						whenUp();
+						clearInterval(this.keyDown);
+						this.keyDown = false;
+					}
+				});
+			}
+		}
+
+		/*var canvas = canvasGen();
+		var other = new Image();
+		other.src = "test.png";
+		other.onload = ()=>{
+			canvas.ctx.drawImage(other, window.innerHeight/2, window.innerHeight/2);
+		};
+		function redraw(){
+
+		}
+		function update(){
+			canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+			redraw();
+		}*/
+		//requestAnimationFrame(update);
+		function testLoop(func){
+			setTimeout(()=>{
+				testLoop(func);
+			}, 1000/60);
+			func();
+		}
+		async function start(){
+			var art = await loadImages(["test.png"]);
+			var canvas = canvasGen();
+			var player = new entity(art["test.png"]);
+			player.draw(canvas.ctx);
+			new key("s", ()=>{player.y++;}, ()=>{}, 10);
+			new key("w", ()=>{player.y--;}, ()=>{}, 10);
+			new key("a", ()=>{player.x--;}, ()=>{}, 10);
+			new key("d", ()=>{player.x++;}, ()=>{}, 10);									
+			var update = ()=>{
+				canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+				player.draw(canvas.ctx);
+				//console.log("LOL");
+			}	
+			testLoop(()=>{requestAnimationFrame(update);});
+			//setInterval(()=>{requestAnimationFrame(update);}, 1000/60);
+		}
+		setTimeout(start, 10);
+	</script>
+</body>
+</html>
