@@ -8,7 +8,16 @@
 	html{
 		cursor: url("cursor.png") 0 0, pointer;
 	}
+	div{
+		position: fixed;
+		top: 10px;
+		font-size: 40px;
+		left: 10px;
+		user-select: none;
+		pointer-events: none;
+	}
 </style>
+<div id="FPS">0</div>
 	<script>
 		function canvasGen(){
 			var temp = document.createElement("CANVAS");
@@ -46,17 +55,30 @@
 		}
 		var allEntities = [];
 		class entity{
-			constructor(image){
+			constructor(image, x, y){
 				this.img = image;
-				this.x = 0;
-				this.y = 0;
+				this.x = x || 0;
+				this.y = y || 0;
+				this.index = 0;
+				this.movement = [];
 				allEntities.push(this);
 				//this.width = 64;
 				//this.height = 64;
 			}
 			draw(ctx){
-				ctx.drawImage(this.img, this.x, this.y);
+				ctx.drawImage(this.img[this.index], this.x, this.y);
 			}
+			move(key){
+				var temp = this.movement.indexOf(key);
+				if (temp == -1) this.movement.push(key);
+				//console.log(this.movement);
+			}
+			stop(key) {
+				var temp = this.movement.indexOf(key);
+				if (temp == -1) return false;				
+				this.movement.splice(temp, 1);
+			}
+			moving(){return this.movement.length != 0;}
 		}
 		class key{
 			constructor(key, whenDown, whenUp, speed){
@@ -80,45 +102,79 @@
 				});
 			}
 		}
-
-		/*var canvas = canvasGen();
-		var other = new Image();
-		other.src = "test.png";
-		other.onload = ()=>{
-			canvas.ctx.drawImage(other, window.innerHeight/2, window.innerHeight/2);
-		};
-		function redraw(){
-
+		class cursor{
+			constructor(func) {
+				this.mousePos = {
+					x: 0,
+					y: 0
+				}
+				this.exe = ()=>{func(this.mousePos);};
+				document.addEventListener("mousemove", (e)=>{
+					this.mousePos.x = e.clientX;
+					this.mousePos.y = e.clientY;
+					this.exe();
+				});
+			}
 		}
-		function update(){
-			canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-			redraw();
-		}*/
-		//requestAnimationFrame(update);
-		function testLoop(func){
+		var fps = document.getElementById("FPS");
+		function testLoop(func, time){
 			setTimeout(()=>{
-				testLoop(func);
+				var temp = Date.now();
+				fps.innerHTML = Math.round(1000/(temp-time));
+				testLoop(func, temp);
 			}, 1000/60);
 			func();
 		}
+		function rand(min, max) {
+			if (min === max) return max;
+			return Math.round(Math.random()*(max-min) + min);
+		}
+		function rng(min, max, excludeMin, excludeMax) {
+			var low = excludeMin-min;
+			var high = max-excludeMax;
+			var random = Math.round(this.rand(0, low+high+1));
+			if (random >= 0 && random <= low) {
+				return random+min;
+			} else if (random > low && random <= low+high+1) {
+				return random-low+excludeMax;
+			}
+		}
 		async function start(){
-			var art = await loadImages(["test.png"]);
+			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png"]);
 			var canvas = canvasGen();
-			var player = new entity(art["test.png"]);
+			var player = new entity([art["test.png"], art["testBack.png"]]);
 			player.draw(canvas.ctx);
-			new key("s", ()=>{player.y++;}, ()=>{}, 10);
-			new key("w", ()=>{player.y--;}, ()=>{}, 10);
-			new key("a", ()=>{player.x--;}, ()=>{}, 10);
-			new key("d", ()=>{player.x++;}, ()=>{}, 10);									
+			var cur = new cursor((mouse)=>{
+				if (player.moving()) return;
+				if (mouse.y-32 < player.y) player.index = 1;
+				else player.index = 0;
+			});				
+			new key("s", ()=>{player.y+=1; player.index = 0; player.move("s"); }, ()=>{player.stop("s"); cur.exe();}, 10);
+			new key("w", ()=>{player.y-=1; player.index = 1; player.move("w"); }, ()=>{player.stop("w"); cur.exe();}, 10);
+			new key("a", ()=>{player.x-=1;}, ()=>{}, 10);
+			new key("d", ()=>{player.x+=1;}, ()=>{}, 10);							
 			var update = ()=>{
 				canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-				player.draw(canvas.ctx);
+				for (var i = 0; i < allEntities.length; i++) allEntities[i].draw(canvas.ctx);
 				//console.log("LOL");
 			}	
-			testLoop(()=>{requestAnimationFrame(update);});
+			testLoop(()=>{requestAnimationFrame(update);}, 0);
+			var enemies = [];
+			for (var i = 0; i < 2500; i++) 
+			enemies.push(new entity([art["enemy.png"], art["enemyBack"]], rand(0, window.innerHeight-20), rand(0, window.innerHeight-20)));
+			setInterval(()=>{
+				for (var i = 0; i < enemies.length; i++) {
+					var enemy = enemies[i];
+					if (enemy.x < player.x) enemy.x+=rand(1,2);
+					if (enemy.y < player.y) enemy.y+=rand(1,2);
+					if (enemy.y > player.y) enemy.y-=rand(1,2);
+					if (enemy.x > player.x) enemy.x-=rand(1,2);					
+				}
+			}, 20);
 			//setInterval(()=>{requestAnimationFrame(update);}, 1000/60);
 		}
-		setTimeout(start, 10);
+		start();
+		//setTimeout(start, 10);
 	</script>
 </body>
 </html>
