@@ -6,7 +6,7 @@
 		outline: 5px solid black;
 	}
 	html{
-		cursor: url("cursor.png") 0 0, pointer;
+		cursor: url("cursor.png") 8 8, pointer;
 	}
 	div{
 		position: fixed;
@@ -29,7 +29,7 @@
 			return {
 				width: window.innerHeight-20,
 				height: window.innerHeight-20,
-				x: window.innerWidth/2,
+				x: (window.innerHeight-20)/2,
 				y: 10,
 				ctx: temp.getContext("2d"),
 			}
@@ -54,55 +54,113 @@
 			return temp;
 		}
 		var allEntities = [];
-		class entity{
+		var allCol = [];
+		class key{
+			constructor(keyCode, whenDown, whenUp, speed){
+				this.mainKey = keyCode;
+				this.keyDown = false;
+				document.addEventListener("keydown", (e)=>{
+					//e.preventDefault();
+					if (e.code != this.mainKey) return;
+					if (!this.keyDown) {
+						this.keyDown = true;
+						whenDown();
+						if (speed != 0) this.keyDown = setInterval(whenDown, speed);
+					}
+				});
+				document.addEventListener("keyup", (e)=>{
+					if (e.code != this.mainKey) return;					
+					if (this.keyDown) {
+						whenUp();
+						if (speed != 0) clearInterval(this.keyDown);
+						this.keyDown = false;
+					}
+				});
+			}
+		}
+		function distance(x1, x2, y1, y2) {
+			return Math.sqrt(Math.pow(x1-x2, 2), Math.pow(y1-y2));
+		}		
+		class entity {
 			constructor(image, x, y){
 				this.img = image;
-				this.x = x || 0;
-				this.y = y || 0;
+				this.x = x || 100;
+				this.y = y || 100;
 				this.index = 0;
-				this.movement = [];
-				allEntities.push(this);
-				//this.width = 64;
-				//this.height = 64;
+				this.speed = 1;
+				allEntities.push(this);				
 			}
 			draw(ctx){
 				ctx.drawImage(this.img[this.index], this.x, this.y);
 			}
+			tp(x,y){
+				this.x = x;
+				this.y = y;
+			}
+			moveTo(x, y){
+				//One pixel every frame
+				var temp = setInterval(()=>{
+					this.x++;
+					this.y++;
+				}, 1000/60);
+			}
+		}		
+		class player extends entity{
+			constructor(image, x, y){
+				/*this.img = image;
+				this.x = x || 0;
+				this.y = y || 0;
+				this.index = 0;*/
+				super(image, x, y);
+				this.movement = [];
+				this.controls ={};
+				//allEntities.push(this);
+			}
+			onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp) {
+				if (typeof whenUp !== 'function') whenUp = ()=>{};
+				if (typeof whenDown !== 'function') whenDown = ()=>{};					
+				//whenDown = whenDown || ()=>{};
+				this.controls[keyCode] = new key(keyCode, ()=>{
+					if (type === "x") this.moveX(reversed);
+					else if(type === "y") this.moveY(reversed);
+					if (!(imageIndex === null)) this.index = imageIndex;
+					this.move(keyCode);					
+					whenDown();
+				}, ()=>{
+					this.stop(keyCode);
+					whenUp();
+				}, 1000/60);				
+			}
 			move(key){
 				var temp = this.movement.indexOf(key);
 				if (temp == -1) this.movement.push(key);
-				//console.log(this.movement);
 			}
 			stop(key) {
 				var temp = this.movement.indexOf(key);
 				if (temp == -1) return false;				
 				this.movement.splice(temp, 1);
 			}
-			moving(){return this.movement.length != 0;}
-		}
-		class key{
-			constructor(key, whenDown, whenUp, speed){
-				this.mainKey = key;
-				this.keyDown = false;
-				document.addEventListener("keydown", (e)=>{
-					if (e.key != this.mainKey) return;
-					if (!this.keyDown) {
-						this.keyDown = true;
-						whenDown();
-						this.keyDown = setInterval(whenDown, speed);
-					}
-				});
-				document.addEventListener("keyup", (e)=>{
-					if (e.key != this.mainKey) return;					
-					if (this.keyDown) {
-						whenUp();
-						clearInterval(this.keyDown);
-						this.keyDown = false;
-					}
-				});
+			moving(){
+				return this.movement.length != 0;
+			}
+			moveX(reverse){
+				if (reverse) this.x = checkAllX(this.y+8, this.x+10, this.x-this.speed+10)-10;
+				else this.x = checkAllX(this.y+8, this.x, this.x+this.speed+51)-51;				
+				/*if (reverse) this.x -= this.speed;
+				else this.x += this.speed;*/
+			}
+			moveY(reverse){
+				/*if (reverse) this.y -= this.speed;
+				else this.y += this.speed;
+			*/
+			/*if (reverse) this.y = collision(this.x, this.y, this.x, this.y-this.speed).y;
+			else this.y = collision(this.x, this.y, this.x, this.y+this.speed).y;
+			*/
+			if (reverse) this.y = checkAllY(this.x+10, this.y+8, this.y-this.speed+8)-8;
+			else this.y = checkAllY(this.x+10, this.y, this.y+this.speed+64)-64;
 			}
 		}
-		class cursor{
+		class cursorMove{
 			constructor(func) {
 				this.mousePos = {
 					x: 0,
@@ -116,11 +174,77 @@
 				});
 			}
 		}
+		class cursorClick {
+			constructor(button, repetition, whenDown, whenUp) {
+				if (typeof whenUp !== 'function') whenUp = ()=>{};
+				if (typeof whenDown !== 'function') whenDown = ()=>{};				
+				switch(button) {
+					case "left": button = 0; break;
+					case "right": button = 2; break;
+					default: break;
+				}
+				//this.exe = func;
+				this.button = button;
+				this.time = repetition;
+				this.clicking = false;
+				this.mouse = {
+					x: 0,
+					y: 0,
+				}
+				document.addEventListener("mousedown", (e)=>{
+					if (e.button !== this.button) return;
+					this.mouse.x = e.clientX;
+					this.mouse.y = e.clientY;
+					if (!this.clicking) {
+						this.clicking = true;
+						whenDown(this.mouse);
+						if (repetition !== 0) this.clicking = setInterval(()=>{whenDown(this.mouse)}, repetition);
+					}
+				});
+				document.addEventListener("mousemove", (e)=>{
+					this.mouse.x = e.clientX;
+					this.mouse.y = e.clientY;
+				});				
+				document.addEventListener("mouseup", (e)=>{
+					if (e.button !== this.button) return;
+					this.mouse.x = e.clientX;
+					this.mouse.y = e.clientY;										
+					if (this.clicking) {
+						whenUp(this.mouse);
+						if (repetition !== 0) clearInterval(this.clicking);
+						this.clicking = false;
+					}
+				});
+							/*	document.addEventListener("keydown", (e)=>{
+					//e.preventDefault();
+					if (e.code != this.mainKey) return;
+					if (!this.keyDown) {
+						this.keyDown = true;
+						whenDown();
+						if (speed != 0) this.keyDown = setInterval(whenDown, speed);
+					}
+				});
+				document.addEventListener("keyup", (e)=>{
+					if (e.code != this.mainKey) return;					
+					if (this.keyDown) {
+						whenUp();
+						if (speed != 0) clearInterval(this.keyDown);
+						this.keyDown = false;
+					}
+				});*/
+			}
+
+		}
+		/*class collision{
+			constructor(){
+				this.allWalls = arguments;
+			}
+		}*/
 		var fps = document.getElementById("FPS");
 		function testLoop(func, time){
 			setTimeout(()=>{
 				var temp = Date.now();
-				fps.innerHTML = Math.round(1000/(temp-time));
+				//fps.innerHTML = Math.round(1000/(temp-time));
 				testLoop(func, temp);
 			}, 1000/60);
 			func();
@@ -139,42 +263,135 @@
 				return random-low+excludeMax;
 			}
 		}
-		async function start(){
-			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png"]);
 			var canvas = canvasGen();
-			var player = new entity([art["test.png"], art["testBack.png"]]);
-			player.draw(canvas.ctx);
-			var cur = new cursor((mouse)=>{
-				if (player.moving()) return;
-				if (mouse.y-32 < player.y) player.index = 1;
-				else player.index = 0;
-			});				
-			new key("s", ()=>{player.y+=1; player.index = 0; player.move("s"); }, ()=>{player.stop("s"); cur.exe();}, 10);
-			new key("w", ()=>{player.y-=1; player.index = 1; player.move("w"); }, ()=>{player.stop("w"); cur.exe();}, 10);
-			new key("a", ()=>{player.x-=1;}, ()=>{}, 10);
-			new key("d", ()=>{player.x+=1;}, ()=>{}, 10);							
+			class wall {
+				constructor(x, y, distance, positive, direction){
+					this.x = x;
+					this.y = y;
+					this.distance = distance;
+					this.positive = positive;
+					if (direction === 'x') {
+						this.check = (x, y1, y2)=>{
+							var bounds = [this.x, this.x+this.distance];
+							if (!(bounds[0] <= x && x <= bounds[1])) return {y:y2, impact: false};
+							if (this.positive) {
+								if (y2 > this.y && y1 <= this.y) return {y:this.y, impact:true}; // limit
+							}
+							else {
+								if(y2 < this.y && y1 >= this.y) return {y:this.y, impact:true};
+							}
+							return {y:y2, impact: false};
+
+						};
+					} else if (direction === 'y') {
+						this.check = (y, x1, x2)=>{
+							var bounds = [this.y, this.y+this.distance];
+							if (!(bounds[0] <= y && y <= bounds[1])) return {x:x2, impact: false};
+							if (this.positive) {
+								if (x2 > this.x && x1 <= this.x) return {x:this.x, impact:true}; // limit
+							}
+							else {
+								if(x2 < this.x && x1 >= this.x) return {x:this.x, impact:true};
+							}
+							return {x:x2, impact: false};
+						};
+					}
+				}
+			}
+		allCol.push({y: new wall(0,0,canvas.width, false, "x"), x: new wall(0,0,canvas.height, false, "y")});
+		allCol.push({y: new wall(0,canvas.height,canvas.width, true, "x"), x: new wall(canvas.width,0,canvas.height, true, "y")});		
+		function checkAllY(x, y1, y2){
+			for (var i = 0; i < allCol.length; i++) {
+				y2 = allCol[i].y.check(x, y1, y2).y;
+			}
+			return y2;
+		}
+		function checkAllX(y, x1, x2){
+			for (var i = 0; i < allCol.length; i++) {
+				x2 = allCol[i].x.check(y, x1, x2).x;
+			}
+			return x2;
+		}		
+		async function start(){
+			document.addEventListener("contextmenu", (e)=>e.preventDefault());
+			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png"]);
+			//var player = new entity([art["test.png"], art["testBack.png"]]);
+			//onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp)
+			var mainPlayer = new player([art["test.png"], art["testBack.png"]]);
+			//player.draw(canvas.ctx);
+			var cur = new cursorMove((mouse)=>{
+				if (mainPlayer.moving()) return;
+				if (mouse.y-32 < mainPlayer.y) mainPlayer.index = 1;
+				else mainPlayer.index = 0;
+			});	
+			mainPlayer.speed = 5;			
+			mainPlayer.onmove("KeyS", false, "y", 0, false, ()=>{cur.exe();});
+			mainPlayer.onmove("KeyW", true, "y", 1, false, ()=>{cur.exe();});
+			mainPlayer.onmove("KeyA", true, "x", null, false, false);
+			mainPlayer.onmove("KeyD", false, "x", null, false, false);									
+			//new key("KeyS", ()=>{player.y+=5; player.index = 0; player.move("s"); }, ()=>{player.stop("s"); cur.exe();}, 1000/60);
+			//new key("KeyW", ()=>{player.y-=5; player.index = 1; player.move("w"); }, ()=>{player.stop("w"); cur.exe();}, 1000/60);
+			//new key("KeyA", ()=>{player.x-=5; }, ()=>{}, 1000/60);
+			//new key("KeyD", ()=>{player.x+=5; }, ()=>{}, 1000/60);							
 			var update = ()=>{
 				canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+				fps.innerHTML = mainPlayer.x + " | " + mainPlayer.y;
 				for (var i = 0; i < allEntities.length; i++) allEntities[i].draw(canvas.ctx);
 				//console.log("LOL");
 			}	
-			testLoop(()=>{requestAnimationFrame(update);}, 0);
 			var enemies = [];
-			for (var i = 0; i < 2500; i++) 
-			enemies.push(new entity([art["enemy.png"], art["enemyBack"]], rand(0, window.innerHeight-20), rand(0, window.innerHeight-20)));
+			new cursorClick("left", 1000/60, (mouse)=>{
+				enemies.push(new entity([art["newEnemy.png"]], mouse.x-32-canvas.x, mouse.y-32-canvas.y));
+			}, ()=>console.log("UP"));
+			testLoop(()=>{requestAnimationFrame(update);}, 0);
+			//new collision([[0,0], [0, canvas.height]], [[0, canvas.height],[canvas.width, canvas.height]], [[canvas.width, canvas.height],[canvas.width, 0]], [[canvas.width, 0],[0,0]]);
+			//for (var i = 0; i < 2000; i++) 
+			//enemies.push(new entity([art["enemy.png"], art["enemyBack"]], rand(0, window.innerHeight-20), rand(0, window.innerHeight-20)));
 			setInterval(()=>{
 				for (var i = 0; i < enemies.length; i++) {
 					var enemy = enemies[i];
-					if (enemy.x < player.x) enemy.x+=rand(1,2);
-					if (enemy.y < player.y) enemy.y+=rand(1,2);
-					if (enemy.y > player.y) enemy.y-=rand(1,2);
-					if (enemy.x > player.x) enemy.x-=rand(1,2);					
+					if (enemy.x < mainPlayer.x) enemy.x+=rand(1,2);
+					if (enemy.y < mainPlayer.y) enemy.y+=rand(1,2);
+					if (enemy.y > mainPlayer.y) enemy.y-=rand(1,2);
+					if (enemy.x > mainPlayer.x) enemy.x-=rand(1,2);					
 				}
-			}, 20);
+			}, 1000/60);
 			//setInterval(()=>{requestAnimationFrame(update);}, 1000/60);
 		}
 		start();
 		//setTimeout(start, 10);
+		function collision(x1, y1, x2, y2){
+			var col = [[[0,0], [0, canvas.height]], [[0, canvas.height],[canvas.width, canvas.height]], [[canvas.width, canvas.height],[canvas.width, 0]], [[0, 0],[canvas.width,0]]];
+			for (var i = 0; i < col.length; i++) {
+				var temp = limiter(x1, y1, x2, y2, col[i]);
+				console.log("I: ", i, " | ", JSON.stringify(temp), " | ", x1, " : ", y1);
+				x2 = temp.x;
+				y2 = temp.y;
+			}
+			return {x:x2, y:y2};
+		}
+
+		function limiter(x1, y1, x2, y2, temp){
+			//var temp = [[0,0], [10, 0]];
+			if (temp[0][0] === temp[1][0]) {
+				if (!(y1 > temp[0][1] && y2 < temp[1][1])) return {x:x2, y:y2};
+				if ((x1 > temp[0][0] && temp[0][0] > x2) || (x1 < temp[0][0] && temp[0][0] < x2)) {
+					return {x:temp[0][0], y:y2};
+				}
+				return {x:x2, y:y2};
+			} else if (temp[0][1] === temp[1][1]) {
+				console.log(x1, y1, x2, y2);
+				if (!(x1 > temp[0][0] && x2 < temp[1][0])) return {x:x2, y:y2};
+				if ((y1 >= temp[0][1] && temp[0][1] >= y2) || (y1 < temp[0][1] && temp[0][1] < y2)) {
+					console.log("DONE");
+					return {x:x2, y:temp[0][1]};
+				}
+				return {x:x2, y:y2};
+			}
+			//if (x < temp[0][0] && x > temp[1][0]);
+			//if (y < temp[0][1] && y < temp[1][1]);
+			//return {x:x, y:y};
+		}
 	</script>
 </body>
 </html>
