@@ -53,29 +53,35 @@
 			}
 			return temp;
 		}
-		var allEntities = [];
+		var allEntities = {};
 		var allCol = [];
 		class key{
 			constructor(keyCode, whenDown, whenUp, speed){
 				this.mainKey = keyCode;
 				this.keyDown = false;
-				document.addEventListener("keydown", (e)=>{
-					//e.preventDefault();
+				this.whenDown = (e)=>{
 					if (e.code != this.mainKey) return;
 					if (!this.keyDown) {
 						this.keyDown = true;
 						whenDown();
 						if (speed != 0) this.keyDown = setInterval(whenDown, speed);
 					}
-				});
-				document.addEventListener("keyup", (e)=>{
+				};
+				this.whenUp = (e)=>{
 					if (e.code != this.mainKey) return;					
 					if (this.keyDown) {
 						whenUp();
 						if (speed != 0) clearInterval(this.keyDown);
 						this.keyDown = false;
 					}
-				});
+				};
+				document.addEventListener("keydown", this.whenDown);
+				document.addEventListener("keyup", this.whenUp);
+			}
+			destroy(){
+				document.removeEventListener("keydown", this.whenDown);
+				document.removeEventListener("keyup", this.whenUp);
+				delete this;
 			}
 		}
 		function distance(x1, y1, x2, y2) {
@@ -92,7 +98,9 @@
 				this.y = y || 0;
 				this.index = 0;
 				this.speed = 1;
-				allEntities.push(this);				
+				this.moveToLoop = false;
+				this.id = Symbol();
+				allEntities[this.id] = this;				
 			}
 			draw(ctx){
 				ctx.drawImage(this.img[this.index], this.x, this.y);
@@ -101,41 +109,46 @@
 				this.x = x;
 				this.y = y;
 			}
-			moveTo(x, y){
+			moveTo(x, y, reach, collision){
 				//One pixel every frame
-				console.log(x, y);
+				this.stopMoving();
 				var rise = y-this.y, run = x-this.x, dist = distance(x,y,this.x,this.y), xPos = 1, yPos = 1;
 				if (rise < 0) yPos = -1;
 				if (run < 0) xPos = -1;
-				var reps = 0;
 				var timeStart = Date.now();
-				var temp = setInterval(()=>{
+				this.moveToLoop = true;
+				this.moveToLoop = setInterval(()=>{
 					var tempY = this.y + rise/dist*this.speed;
 					var tempX = this.x + run/dist*this.speed;
-					reps++;					
-					console.log(dist, run/dist*this.speed, run/dist*this.speed, (Date.now()-timeStart), rise, run);
+					//console.log(dist, run/dist*this.speed, run/dist*this.speed, (Date.now()-timeStart), rise, run);
 					if ((tempX-x)*xPos >= 0 && (tempY-y)*yPos >= 0){ // -x means that tempY is negative 
 						ERR((Date.now()-timeStart), 1000/60*dist/this.speed);
 						this.y = y;
 						this.x = x;
-						clearInterval(temp);
+						this.stopMoving();
 					} else {
 						this.y = tempY;
 						this.x = tempX;
 					}
 				}, 1000/60);
 			}
+			stopMoving(){
+				// Not currently rounding!!!!
+				if (this.moveToLoop) {
+					clearInterval(this.moveToLoop);
+					this.moveToLoop = false;
+				}
+			}
+			destroy(){
+				delete this;
+			}
 		}		
 		class player extends entity{
 			constructor(image, x, y){
-				/*this.img = image;
-				this.x = x || 0;
-				this.y = y || 0;
-				this.index = 0;*/
 				super(image, x, y);
 				this.movement = [];
-				this.controls ={};
-				//allEntities.push(this);
+				this.controls = {};
+				this.mouseControls = {};
 			}
 			onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp) {
 				if (typeof whenUp !== 'function') whenUp = ()=>{};
@@ -167,27 +180,32 @@
 			moveX(reverse){
 				if (reverse) this.x = checkAllX(this.y+8, this.x+10, this.x-this.speed+10)-10;
 				else this.x = checkAllX(this.y+8, this.x, this.x+this.speed+51)-51;				
-				/*if (reverse) this.x -= this.speed;
-				else this.x += this.speed;*/
 			}
 			moveY(reverse){
-				/*if (reverse) this.y -= this.speed;
-				else this.y += this.speed;
-			*/
-			/*if (reverse) this.y = collision(this.x, this.y, this.x, this.y-this.speed).y;
-			else this.y = collision(this.x, this.y, this.x, this.y+this.speed).y;
-			*/
-			if (reverse) this.y = checkAllY(this.x+10, this.y+8, this.y-this.speed+8)-8;
-			else this.y = checkAllY(this.x+10, this.y, this.y+this.speed+64)-64;
+				if (reverse) this.y = checkAllY(this.x+10, this.y+8, this.y-this.speed+8)-8;
+				else this.y = checkAllY(this.x+10, this.y, this.y+this.speed+64)-64;
+			}
+			onCursorMove(label, func){
+				this.mouseControls[label] = new cursorMove(func, this);
+			}
+			onCursorClick(label, button, repetition, whenDown, whenUp){
+				this.mouseControls[label] = new cursorClick(button, repetition, whenDown, whenUp, this);
+			}
+			clean(){
+				for (var key in this.controls) {
+					this.controls[key].destroy();
+				}
+				delete allEntities[this.id];
+				this.destroy();
 			}
 		}
 		class cursorMove{
-			constructor(func) {
+			constructor(func, objectRef) {
 				this.mousePos = {
 					x: 0,
 					y: 0
-				}
-				this.exe = ()=>{func(this.mousePos);};
+				};
+				this.exe = ()=>{func(this.mousePos, objectRef);};
 				document.addEventListener("mousemove", (e)=>{
 					this.mousePos.x = e.clientX;
 					this.mousePos.y = e.clientY;
@@ -196,7 +214,7 @@
 			}
 		}
 		class cursorClick {
-			constructor(button, repetition, whenDown, whenUp) {
+			constructor(button, repetition, whenDown, whenUp, objectRef) {
 				if (typeof whenUp !== 'function') whenUp = ()=>{};
 				if (typeof whenDown !== 'function') whenDown = ()=>{};				
 				switch(button) {
@@ -212,47 +230,40 @@
 					x: 0,
 					y: 0,
 				}
-				document.addEventListener("mousedown", (e)=>{
+				this.ondown = (e, targetObj)=>{
 					if (e.button !== this.button) return;
 					this.mouse.x = e.clientX;
 					this.mouse.y = e.clientY;
 					if (!this.clicking) {
 						this.clicking = true;
-						whenDown(this.mouse);
-						if (repetition !== 0) this.clicking = setInterval(()=>{whenDown(this.mouse)}, repetition);
+						whenDown(this.mouse, objectRef);
+						if (repetition !== 0) this.clicking = setInterval(()=>whenDown(this.mouse, objectRef), repetition);
 					}
-				});
-				document.addEventListener("mousemove", (e)=>{
+				};
+				this.onmove = (e)=>{
 					this.mouse.x = e.clientX;
 					this.mouse.y = e.clientY;
-				});				
-				document.addEventListener("mouseup", (e)=>{
+				};
+				this.onup = (e, targetObj)=>{
 					if (e.button !== this.button) return;
 					this.mouse.x = e.clientX;
 					this.mouse.y = e.clientY;										
 					if (this.clicking) {
-						whenUp(this.mouse);
+						whenUp(this.mouse, objectRef);
 						if (repetition !== 0) clearInterval(this.clicking);
 						this.clicking = false;
 					}
-				});
-							/*	document.addEventListener("keydown", (e)=>{
-					//e.preventDefault();
-					if (e.code != this.mainKey) return;
-					if (!this.keyDown) {
-						this.keyDown = true;
-						whenDown();
-						if (speed != 0) this.keyDown = setInterval(whenDown, speed);
-					}
-				});
-				document.addEventListener("keyup", (e)=>{
-					if (e.code != this.mainKey) return;					
-					if (this.keyDown) {
-						whenUp();
-						if (speed != 0) clearInterval(this.keyDown);
-						this.keyDown = false;
-					}
-				});*/
+				};
+				document.addEventListener("mousedown", this.ondown);
+				document.addEventListener("mousemove", this.onmove);				
+				document.addEventListener("mouseup", this.onup);
+			}
+			destroy(){
+				document.removeEventListener("mousedown", this.ondown);
+				document.removeEventListener("mousemove", this.onmove);				
+				document.removeEventListener("mouseup", this.onup);				
+				delete this;
+				//this = undefined;
 			}
 
 		}
@@ -340,34 +351,41 @@
 			//onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp)
 			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 100, 100);
 			//player.draw(canvas.ctx);
-			var cur = new cursorMove((mouse)=>{
+			/*var cur = new cursorMove((mouse)=>{
 				if (mainPlayer.moving()) return;
 				if (mouse.y-32 < mainPlayer.y) mainPlayer.index = 1;
 				else mainPlayer.index = 0;
-			});	
+			});	*/
 			mainPlayer.speed = 5;			
-			mainPlayer.onmove("KeyS", false, "y", 0, false, ()=>{cur.exe();});
-			mainPlayer.onmove("KeyW", true, "y", 1, false, ()=>{cur.exe();});
+			//mainPlayer.onmove("KeyS", false, "y", 0, false, ()=>{cur.exe();});
+			//mainPlayer.onmove("KeyW", true, "y", 1, false, ()=>{cur.exe();});
+			mainPlayer.onCursorMove("face", (mouse, playerData)=>{
+				if (playerData.moving()) return;
+				console.log("face");
+
+				if (mouse.y-32 < mainPlayer.y) playerData.index = 1;
+				else playerData.index = 0;				
+			});
+			mainPlayer.onmove("KeyS", false, "y", 0, false, ()=>{
+				mainPlayer.mouseControls.face.exe();
+			});
+			mainPlayer.onmove("KeyW", true, "y", 1, false, ()=>{
+				mainPlayer.mouseControls.face.exe();
+			});			
 			mainPlayer.onmove("KeyA", true, "x", null, false, false);
-			mainPlayer.onmove("KeyD", false, "x", null, false, false);									
-			//new key("KeyS", ()=>{player.y+=5; player.index = 0; player.move("s"); }, ()=>{player.stop("s"); cur.exe();}, 1000/60);
-			//new key("KeyW", ()=>{player.y-=5; player.index = 1; player.move("w"); }, ()=>{player.stop("w"); cur.exe();}, 1000/60);
-			//new key("KeyA", ()=>{player.x-=5; }, ()=>{}, 1000/60);
-			//new key("KeyD", ()=>{player.x+=5; }, ()=>{}, 1000/60);							
+			mainPlayer.onmove("KeyD", false, "x", null, false, false);	
 			var update = ()=>{
 				canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 				fps.innerHTML = mainPlayer.x + " | " + mainPlayer.y;
-				for (var i = 0; i < allEntities.length; i++) allEntities[i].draw(canvas.ctx);
+				var temp = Object.getOwnPropertySymbols(allEntities);
+				for (var i = 0; i < temp.length; i++) allEntities[temp[i]].draw(canvas.ctx);
 				//console.log("LOL");
 			}	
-			var enemies = [];
-			new cursorClick("left", 0, (mouse)=>{
-				var temp = new entity([art["orb.png"]], mainPlayer.x+0, mainPlayer.y+0);
+			mainPlayer.onCursorClick("leftClick", "left", 0, (mouse, playerData)=>{
+				var temp = new entity([art["orb.png"]], playerData.x+0, playerData.y+0);
 				temp.moveTo(mouse.x-8-canvas.x, mouse.y-8-canvas.y);
-				//temp.moveTo(30, 40);
-				temp.speed = 5;
-				//enemies.push(temp);
-			}, ()=>{});
+				temp.speed = 100;
+			}, false);
 			//var orb = new entity([art["orb.png"]], 100, 100);
 			//orb.speed = 5;
 			//orb.moveTo(500, 500);
