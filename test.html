@@ -78,14 +78,18 @@
 				});
 			}
 		}
-		function distance(x1, x2, y1, y2) {
-			return Math.sqrt(Math.pow(x1-x2, 2), Math.pow(y1-y2));
+		function distance(x1, y1, x2, y2) {
+			return Math.sqrt(Math.pow(x1-x2, 2) + Math.pow(y1-y2, 2));
 		}		
+		function ERR(actual, calc){
+			if (Math.round(actual) == Math.round(calc)) console.log("PERFECT");
+			else console.log(Math.round((actual-calc)/calc*100) + "%");
+		}
 		class entity {
 			constructor(image, x, y){
 				this.img = image;
-				this.x = x || 100;
-				this.y = y || 100;
+				this.x = x || 0;
+				this.y = y || 0;
 				this.index = 0;
 				this.speed = 1;
 				allEntities.push(this);				
@@ -99,9 +103,26 @@
 			}
 			moveTo(x, y){
 				//One pixel every frame
+				console.log(x, y);
+				var rise = y-this.y, run = x-this.x, dist = distance(x,y,this.x,this.y), xPos = 1, yPos = 1;
+				if (rise < 0) yPos = -1;
+				if (run < 0) xPos = -1;
+				var reps = 0;
+				var timeStart = Date.now();
 				var temp = setInterval(()=>{
-					this.x++;
-					this.y++;
+					var tempY = this.y + rise/dist*this.speed;
+					var tempX = this.x + run/dist*this.speed;
+					reps++;					
+					console.log(dist, run/dist*this.speed, run/dist*this.speed, (Date.now()-timeStart), rise, run);
+					if ((tempX-x)*xPos >= 0 && (tempY-y)*yPos >= 0){ // -x means that tempY is negative 
+						ERR((Date.now()-timeStart), 1000/60*dist/this.speed);
+						this.y = y;
+						this.x = x;
+						clearInterval(temp);
+					} else {
+						this.y = tempY;
+						this.x = tempX;
+					}
 				}, 1000/60);
 			}
 		}		
@@ -314,10 +335,10 @@
 		}		
 		async function start(){
 			document.addEventListener("contextmenu", (e)=>e.preventDefault());
-			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png"]);
+			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png"]);
 			//var player = new entity([art["test.png"], art["testBack.png"]]);
 			//onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp)
-			var mainPlayer = new player([art["test.png"], art["testBack.png"]]);
+			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 100, 100);
 			//player.draw(canvas.ctx);
 			var cur = new cursorMove((mouse)=>{
 				if (mainPlayer.moving()) return;
@@ -340,22 +361,29 @@
 				//console.log("LOL");
 			}	
 			var enemies = [];
-			new cursorClick("left", 1000/60, (mouse)=>{
-				enemies.push(new entity([art["newEnemy.png"]], mouse.x-32-canvas.x, mouse.y-32-canvas.y));
-			}, ()=>console.log("UP"));
+			new cursorClick("left", 0, (mouse)=>{
+				var temp = new entity([art["orb.png"]], mainPlayer.x+0, mainPlayer.y+0);
+				temp.moveTo(mouse.x-8-canvas.x, mouse.y-8-canvas.y);
+				//temp.moveTo(30, 40);
+				temp.speed = 5;
+				//enemies.push(temp);
+			}, ()=>{});
+			//var orb = new entity([art["orb.png"]], 100, 100);
+			//orb.speed = 5;
+			//orb.moveTo(500, 500);
 			testLoop(()=>{requestAnimationFrame(update);}, 0);
 			//new collision([[0,0], [0, canvas.height]], [[0, canvas.height],[canvas.width, canvas.height]], [[canvas.width, canvas.height],[canvas.width, 0]], [[canvas.width, 0],[0,0]]);
 			//for (var i = 0; i < 2000; i++) 
 			//enemies.push(new entity([art["enemy.png"], art["enemyBack"]], rand(0, window.innerHeight-20), rand(0, window.innerHeight-20)));
-			setInterval(()=>{
+			/*setInterval(()=>{
 				for (var i = 0; i < enemies.length; i++) {
 					var enemy = enemies[i];
-					if (enemy.x < mainPlayer.x) enemy.x+=rand(1,2);
-					if (enemy.y < mainPlayer.y) enemy.y+=rand(1,2);
-					if (enemy.y > mainPlayer.y) enemy.y-=rand(1,2);
-					if (enemy.x > mainPlayer.x) enemy.x-=rand(1,2);					
+					if (enemy.x < mainPlayer.x) enemy.x+=rand(10,10);
+					if (enemy.y < mainPlayer.y) enemy.y+=rand(10,10);
+					if (enemy.y > mainPlayer.y) enemy.y-=rand(10,10);
+					if (enemy.x > mainPlayer.x) enemy.x-=rand(10,10);					
 				}
-			}, 1000/60);
+			}, 1000/60);*/
 			//setInterval(()=>{requestAnimationFrame(update);}, 1000/60);
 		}
 		start();
