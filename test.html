@@ -92,10 +92,15 @@
 			else console.log(Math.round((actual-calc)/calc*100) + "%");
 		}
 		class entity {
-			constructor(image, x, y){
+			constructor(image, x, y, hitHeight, hitWidth, offset, width, height){
 				this.img = image;
 				this.x = x || 0;
 				this.y = y || 0;
+				this.hitOffset = offset || 0;
+				this.height = height || image[0].height;
+				this.width = width || image[0].width;
+				this.hitHeight = this.height;
+				this.hitWidth = this.width;				
 				this.index = 0;
 				this.speed = 1;
 				this.moveToLoop = false;
@@ -144,8 +149,8 @@
 			}
 		}		
 		class player extends entity{
-			constructor(image, x, y){
-				super(image, x, y);
+			constructor(image, x, y, hitHeight, hitWidth, offset, width, height){
+				super(image, x, y, hitHeight, hitWidth, offset, width, height);
 				this.movement = [];
 				this.controls = {};
 				this.mouseControls = {};
@@ -361,8 +366,6 @@
 			//mainPlayer.onmove("KeyW", true, "y", 1, false, ()=>{cur.exe();});
 			mainPlayer.onCursorMove("face", (mouse, playerData)=>{
 				if (playerData.moving()) return;
-				console.log("face");
-
 				if (mouse.y-32 < mainPlayer.y) playerData.index = 1;
 				else playerData.index = 0;				
 			});
