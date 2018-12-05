@@ -79,6 +79,7 @@
 				document.addEventListener("keyup", this.whenUp);
 			}
 			destroy(){
+				if (this.keyDown) clearInterval(this.keyDown);
 				document.removeEventListener("keydown", this.whenDown);
 				document.removeEventListener("keyup", this.whenUp);
 				delete this;
@@ -92,19 +93,29 @@
 			else console.log(Math.round((actual-calc)/calc*100) + "%");
 		}
 		class entity {
-			constructor(image, x, y, hitHeight, hitWidth, offset, width, height){
+			constructor(image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
 				this.img = image;
 				this.x = x || 0;
 				this.y = y || 0;
-				this.hitOffset = offset || 0;
+				//this.hitOffsetX = offsetX || 0;
+				//this.hitOffsetY = offsetY || 0;
 				this.height = height || image[0].height;
 				this.width = width || image[0].width;
-				this.hitHeight = this.height;
-				this.hitWidth = this.width;				
+				//this.hitHeight = this.height;
+				//this.hitWidth = this.width;				
 				this.index = 0;
 				this.speed = 1;
 				this.moveToLoop = false;
 				this.id = Symbol();
+				this.prop = {};
+				this.hit = {
+					offX: offsetX || 0,
+					offY: offsetY || 0,
+					//width: hitWidth || this.width,
+					//height: hitHeight || this.height,
+					offWidth: (hitWidth || this.width),
+					offHeight: (hitHeight || this.height),
+				}				
 				allEntities[this.id] = this;				
 			}
 			draw(ctx){
@@ -144,13 +155,17 @@
 					this.moveToLoop = false;
 				}
 			}
+			generateHitBox(){
+
+			}
 			destroy(){
 				delete this;
 			}
 		}		
+		// offset of 8, hitHeight of 
 		class player extends entity{
-			constructor(image, x, y, hitHeight, hitWidth, offset, width, height){
-				super(image, x, y, hitHeight, hitWidth, offset, width, height);
+			constructor(image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
+				super(image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height);
 				this.movement = [];
 				this.controls = {};
 				this.mouseControls = {};
@@ -183,12 +198,13 @@
 				return this.movement.length != 0;
 			}
 			moveX(reverse){
-				if (reverse) this.x = checkAllX(this.y+8, this.x+10, this.x-this.speed+10)-10;
-				else this.x = checkAllX(this.y+8, this.x, this.x+this.speed+51)-51;				
+				if (reverse) this.x = checkAllX(this.y+this.hit.offY, this.x+this.hit.offX, this.x-this.speed+this.hit.offX, this, ()=>{})-this.hit.offX;
+				else this.x = checkAllX(this.y+this.hit.offY, this.x, this.x+this.speed+this.hit.offWidth, this, ()=>{})-this.hit.offWidth;				
 			}
 			moveY(reverse){
-				if (reverse) this.y = checkAllY(this.x+10, this.y+8, this.y-this.speed+8)-8;
-				else this.y = checkAllY(this.x+10, this.y, this.y+this.speed+64)-64;
+				if (reverse) 
+					this.y = checkAllY(this.x+this.hit.offX, this.y+this.hit.offY, this.y-this.speed+this.hit.offY, this, ()=>{})-this.hit.offY;
+				else this.y = checkAllY(this.x+this.hit.offX, this.y, this.y+this.speed+this.hit.offHeight, this, ()=>{})-this.hit.offHeight;
 			}
 			onCursorMove(label, func){
 				this.mouseControls[label] = new cursorMove(func, this);
@@ -301,51 +317,61 @@
 			}
 		}
 			var canvas = canvasGen();
-			class wall {
-				constructor(x, y, distance, positive, direction){
-					this.x = x;
-					this.y = y;
-					this.distance = distance;
-					this.positive = positive;
-					if (direction === 'x') {
-						this.check = (x, y1, y2)=>{
-							var bounds = [this.x, this.x+this.distance];
-							if (!(bounds[0] <= x && x <= bounds[1])) return {y:y2, impact: false};
-							if (this.positive) {
-								if (y2 > this.y && y1 <= this.y) return {y:this.y, impact:true}; // limit
-							}
-							else {
-								if(y2 < this.y && y1 >= this.y) return {y:this.y, impact:true};
-							}
-							return {y:y2, impact: false};
+		class wall {
+			constructor(x, y, distance, positive, direction, OBJ){
+				this.x = x;
+				this.y = y;
+				this.distance = distance;
+				this.positive = positive;
+				if (direction === 'x') {
+					this.check = (x, y1, y2, onImpact)=>{
+						var bounds = [this.x, this.x+this.distance];
+						if (!(bounds[0] <= x && x <= bounds[1])) return {y:y2, impact: false};
+						if (this.positive) {
+							if (y2 > this.y && y1 <= this.y) return {y:this.y, impact:OBJ}; // limit
+						}
+						else {
+							if(y2 < this.y && y1 >= this.y) return {y:this.y, impact:OBJ};
+						}
+						return {y:y2, impact: false};
 
-						};
-					} else if (direction === 'y') {
-						this.check = (y, x1, x2)=>{
-							var bounds = [this.y, this.y+this.distance];
-							if (!(bounds[0] <= y && y <= bounds[1])) return {x:x2, impact: false};
-							if (this.positive) {
-								if (x2 > this.x && x1 <= this.x) return {x:this.x, impact:true}; // limit
-							}
-							else {
-								if(x2 < this.x && x1 >= this.x) return {x:this.x, impact:true};
-							}
-							return {x:x2, impact: false};
-						};
-					}
+					};
+				} else if (direction === 'y') {
+					this.check = (y, x1, x2, onImpact)=>{
+						var bounds = [this.y, this.y+this.distance];
+						if (!(bounds[0] <= y && y <= bounds[1])) return {x:x2, impact: false};
+						if (this.positive) {
+							if (x2 > this.x && x1 <= this.x) return {x:this.x, impact:OBJ}; // limit
+						}
+						else {
+							if(x2 < this.x && x1 >= this.x) return {x:this.x, impact:OBJ};
+						}
+						return {x:x2, impact: false};
+					};
 				}
 			}
-		allCol.push({y: new wall(0,0,canvas.width, false, "x"), x: new wall(0,0,canvas.height, false, "y")});
-		allCol.push({y: new wall(0,canvas.height,canvas.width, true, "x"), x: new wall(canvas.width,0,canvas.height, true, "y")});		
-		function checkAllY(x, y1, y2){
+		}
+		allCol.push({y: new wall(0,0,canvas.width, false, "x", "wall"), x: new wall(0,0,canvas.height, false, "y", "wall")});
+		allCol.push({y: new wall(0,canvas.height,canvas.width, true, "x", "wall"), x: new wall(canvas.width,0,canvas.height, true, "y", "wall")});		
+		function checkAllY(x, y1, y2, current, onImpact){
 			for (var i = 0; i < allCol.length; i++) {
-				y2 = allCol[i].y.check(x, y1, y2).y;
+				var temp = allCol[i].y.check(x, y1, y2);
+				if (temp.impact) {
+					var atImpact = onImpact(current, atImpact);
+					if (atImpact) return atImpact;
+				}
+				y2 = temp.y;
 			}
 			return y2;
 		}
-		function checkAllX(y, x1, x2){
+		function checkAllX(y, x1, x2, current, onImpact){
 			for (var i = 0; i < allCol.length; i++) {
-				x2 = allCol[i].x.check(y, x1, x2).x;
+				var temp = allCol[i].x.check(y, x1, x2);
+				if (temp.impact) {
+					var atImpact = onImpact(current, atImpact);
+					if (atImpact) return atImpact;
+				}		
+				x2 = temp.x;
 			}
 			return x2;
 		}		
@@ -354,7 +380,7 @@
 			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png"]);
 			//var player = new entity([art["test.png"], art["testBack.png"]]);
 			//onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp)
-			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 100, 100);
+			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 100, 100, 51, false, 10, 8);
 			//player.draw(canvas.ctx);
 			/*var cur = new cursorMove((mouse)=>{
 				if (mainPlayer.moving()) return;
@@ -384,10 +410,10 @@
 				for (var i = 0; i < temp.length; i++) allEntities[temp[i]].draw(canvas.ctx);
 				//console.log("LOL");
 			}	
-			mainPlayer.onCursorClick("leftClick", "left", 0, (mouse, playerData)=>{
+			mainPlayer.onCursorClick("leftClick", "left", 1000/60, (mouse, playerData)=>{
 				var temp = new entity([art["orb.png"]], playerData.x+0, playerData.y+0);
 				temp.moveTo(mouse.x-8-canvas.x, mouse.y-8-canvas.y);
-				temp.speed = 100;
+				temp.speed = 1;
 			}, false);
 			//var orb = new entity([art["orb.png"]], 100, 100);
 			//orb.speed = 5;
