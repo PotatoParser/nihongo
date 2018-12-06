@@ -1,0 +1,70 @@
+<!DOCTYPE HTML>
+<html>
+<body>
+	<canvas height="100" width="100"></canvas>
+	<script>
+		// Original is a 10x10 player grid
+		// Generates an image for the map
+		var main1 = document.getElementsByTagName("CANVAS")[0];
+		var main = main1.getContext("2d");
+		async function readMap(image){
+			var other = new Image();
+			other.src = image;
+			await new Promise((resolve)=>{
+				other.onload = ()=>{
+					resolve();
+				}
+			});
+			var other2 = new Image();
+			other2.src = "wall2.png";
+			await new Promise((resolve)=>{
+				other2.onload = ()=>{
+					resolve();
+				}
+			});
+						var other3 = new Image();
+			other3.src = "floor.png";
+			await new Promise((resolve)=>{
+				other3.onload = ()=>{
+					resolve();
+				}
+			});								
+			main.drawImage(other, 0, 0);
+			var fin = [];
+			for (var y = 0; y < other.height; y++) {
+				var temp = [];
+				for (var x = 0; x < other.width; x++) {
+					var color = main.getImageData(x, y, 1, 1).data;
+					if (color[3] == 0) temp.push(null);
+					else if (color[0]+color[1]+color[2]+color[3] == 255) temp.push(255);
+					else {
+						var colors = "";
+						for (var i = 0; i < 3; i++) {
+							if (color[i].toString(16) == "0") colors+="00";
+							else colors +=color[i].toString(16);
+						}
+						temp.push(colors);
+					}
+					//console.log(main.getImageData(x, y, 1, 1));
+				}
+				fin.push(temp);
+			}
+			console.log(fin);
+			main.clearRect(0, 0, main1.width, main1.height);
+			main1.height = 11*64;
+			main1.width = 11*64;
+			for (var y = 0; y < fin.length; y++) {
+				for (var x = 0; x < fin[y].length; x++) {
+					if (fin[y][x] != 255) main.drawImage(other3, x*64, y*64, 64, 64);
+				}
+			}			
+			for (var y = 0; y < fin.length; y++) {
+				for (var x = 0; x < fin[y].length; x++) {
+					if (fin[y][x] == 255) main.drawImage(other2, x*64, y*64, 64, 128);
+				}
+			}
+		}
+		readMap("map1.png");
+	</script>
+</body>
+</html>

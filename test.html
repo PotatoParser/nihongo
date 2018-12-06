@@ -97,12 +97,8 @@
 				this.img = image;
 				this.x = x || 0;
 				this.y = y || 0;
-				//this.hitOffsetX = offsetX || 0;
-				//this.hitOffsetY = offsetY || 0;
 				this.height = height || image[0].height;
-				this.width = width || image[0].width;
-				//this.hitHeight = this.height;
-				//this.hitWidth = this.width;				
+				this.width = width || image[0].width;			
 				this.index = 0;
 				this.speed = 1;
 				this.moveToLoop = false;
@@ -111,43 +107,54 @@
 				this.hit = {
 					offX: offsetX || 0,
 					offY: offsetY || 0,
-					//width: hitWidth || this.width,
-					//height: hitHeight || this.height,
 					offWidth: (hitWidth || this.width),
 					offHeight: (hitHeight || this.height),
 				}				
 				allEntities[this.id] = this;				
 			}
 			draw(ctx){
-				ctx.drawImage(this.img[this.index], this.x, this.y);
+				ctx.drawImage(this.img[this.index], this.x-this.hit.offX, this.y-this.hit.offY, this.width, this.height);
 			}
 			tp(x,y){
 				this.x = x;
 				this.y = y;
 			}
+			moveX(newX){
+				if (newX < this.x) this.x = checkAllX(this.y, this.x, newX, this, (c,o)=>{});
+				else this.x = checkAllX(this.y, this.x, newX+this.hit.offWidth, this, (c,o)=>{})-this.hit.offWidth;				
+			}			
+			moveY(newY){
+				if (newY < this.y) this.y = checkAllY(this.x, this.y, newY, this, (c,o)=>{});
+				else this.y = checkAllY(this.x, this.y, newY+this.hit.offHeight, this, (c,o)=>{})-this.hit.offHeight;
+			}			
 			moveTo(x, y, reach, collision){
 				//One pixel every frame
 				this.stopMoving();
 				var rise = y-this.y, run = x-this.x, dist = distance(x,y,this.x,this.y), xPos = 1, yPos = 1;
 				if (rise < 0) yPos = -1;
 				if (run < 0) xPos = -1;
-				var timeStart = Date.now();
 				this.moveToLoop = true;
 				this.moveToLoop = setInterval(()=>{
 					var tempY = this.y + rise/dist*this.speed;
 					var tempX = this.x + run/dist*this.speed;
 					//console.log(dist, run/dist*this.speed, run/dist*this.speed, (Date.now()-timeStart), rise, run);
 					if ((tempX-x)*xPos >= 0 && (tempY-y)*yPos >= 0){ // -x means that tempY is negative 
-						ERR((Date.now()-timeStart), 1000/60*dist/this.speed);
-						this.y = y;
-						this.x = x;
-						this.stopMoving();
-					} else {
-						this.y = tempY;
-						this.x = tempX;
+						//ERR((Date.now()-timeStart), 1000/60*dist/this.speed);
+						if (!reach) {
+							//this.y = y;
+							//this.x = x;
+							this.moveY(y);
+							this.moveX(x);
+							this.stopMoving();							
+							return;
+						} else reach(this,x,y);
 					}
+					this.moveY(tempY);
+					this.moveX(tempX);
+					//this.y = tempY;
+					//this.x = tempX;
 				}, 1000/60);
-			}
+			}					
 			stopMoving(){
 				// Not currently rounding!!!!
 				if (this.moveToLoop) {
@@ -159,6 +166,8 @@
 
 			}
 			destroy(){
+				if (this.moveToLoop) clearInterval(this.moveToLoop);
+				delete allEntities[this.id];				
 				delete this;
 			}
 		}		
@@ -175,8 +184,8 @@
 				if (typeof whenDown !== 'function') whenDown = ()=>{};					
 				//whenDown = whenDown || ()=>{};
 				this.controls[keyCode] = new key(keyCode, ()=>{
-					if (type === "x") this.moveX(reversed);
-					else if(type === "y") this.moveY(reversed);
+					if (type === "x") this.moveX(this.x+reversed*this.speed);
+					else if(type === "y") this.moveY(this.y+reversed*this.speed);
 					if (!(imageIndex === null)) this.index = imageIndex;
 					this.move(keyCode);					
 					whenDown();
@@ -196,16 +205,7 @@
 			}
 			moving(){
 				return this.movement.length != 0;
-			}
-			moveX(reverse){
-				if (reverse) this.x = checkAllX(this.y+this.hit.offY, this.x+this.hit.offX, this.x-this.speed+this.hit.offX, this, ()=>{})-this.hit.offX;
-				else this.x = checkAllX(this.y+this.hit.offY, this.x, this.x+this.speed+this.hit.offWidth, this, ()=>{})-this.hit.offWidth;				
-			}
-			moveY(reverse){
-				if (reverse) 
-					this.y = checkAllY(this.x+this.hit.offX, this.y+this.hit.offY, this.y-this.speed+this.hit.offY, this, ()=>{})-this.hit.offY;
-				else this.y = checkAllY(this.x+this.hit.offX, this.y, this.y+this.speed+this.hit.offHeight, this, ()=>{})-this.hit.offHeight;
-			}
+			}	
 			onCursorMove(label, func){
 				this.mouseControls[label] = new cursorMove(func, this);
 			}
@@ -216,7 +216,9 @@
 				for (var key in this.controls) {
 					this.controls[key].destroy();
 				}
-				delete allEntities[this.id];
+				for (var key in this.mouseControls) {
+					this.mouseControls[key].destroy();
+				}
 				this.destroy();
 			}
 		}
@@ -318,41 +320,40 @@
 		}
 			var canvas = canvasGen();
 		class wall {
-			constructor(x, y, distance, positive, direction, OBJ){
+			constructor(x, y, distance, direction, OBJ){
 				this.x = x;
 				this.y = y;
 				this.distance = distance;
-				this.positive = positive;
 				if (direction === 'x') {
 					this.check = (x, y1, y2, onImpact)=>{
 						var bounds = [this.x, this.x+this.distance];
 						if (!(bounds[0] <= x && x <= bounds[1])) return {y:y2, impact: false};
-						if (this.positive) {
-							if (y2 > this.y && y1 <= this.y) return {y:this.y, impact:OBJ}; // limit
-						}
-						else {
-							if(y2 < this.y && y1 >= this.y) return {y:this.y, impact:OBJ};
+						if (y1>y2) {
+							if (y1 >= this.y && this.y > y2) return {y:this.y, impact:OBJ};
+						} else {
+							if (y2 >= this.y && this.y > y1) return {y:this.y, impact:OBJ};
 						}
 						return {y:y2, impact: false};
 
 					};
 				} else if (direction === 'y') {
 					this.check = (y, x1, x2, onImpact)=>{
+						//console.log(y,x1,x2);
 						var bounds = [this.y, this.y+this.distance];
 						if (!(bounds[0] <= y && y <= bounds[1])) return {x:x2, impact: false};
-						if (this.positive) {
-							if (x2 > this.x && x1 <= this.x) return {x:this.x, impact:OBJ}; // limit
+						if (x1>x2) {
+							if (x1 >= this.x && this.x > x2) return {x:this.x, impact:OBJ}; // limit
 						}
 						else {
-							if(x2 < this.x && x1 >= this.x) return {x:this.x, impact:OBJ};
+							if(x2 >= this.x && this.x > x1) return {x:this.x, impact:OBJ};
 						}
 						return {x:x2, impact: false};
-					};
+					};	
 				}
 			}
 		}
-		allCol.push({y: new wall(0,0,canvas.width, false, "x", "wall"), x: new wall(0,0,canvas.height, false, "y", "wall")});
-		allCol.push({y: new wall(0,canvas.height,canvas.width, true, "x", "wall"), x: new wall(canvas.width,0,canvas.height, true, "y", "wall")});		
+		allCol.push({y: new wall(0,0,canvas.width, "x", "wall"), x: new wall(0,0,canvas.height, "y", "wall")});
+		allCol.push({y: new wall(0,canvas.height,canvas.width, "x", "wall"), x: new wall(canvas.width,0,canvas.height, "y", "wall")});		
 		function checkAllY(x, y1, y2, current, onImpact){
 			for (var i = 0; i < allCol.length; i++) {
 				var temp = allCol[i].y.check(x, y1, y2);
@@ -377,10 +378,10 @@
 		}		
 		async function start(){
 			document.addEventListener("contextmenu", (e)=>e.preventDefault());
-			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png"]);
+			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png", "download2.png"]);
 			//var player = new entity([art["test.png"], art["testBack.png"]]);
 			//onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp)
-			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 100, 100, 51, false, 10, 8);
+			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 100, 100, 41, 58, 10, 8);
 			//player.draw(canvas.ctx);
 			/*var cur = new cursorMove((mouse)=>{
 				if (mainPlayer.moving()) return;
@@ -395,25 +396,27 @@
 				if (mouse.y-32 < mainPlayer.y) playerData.index = 1;
 				else playerData.index = 0;				
 			});
-			mainPlayer.onmove("KeyS", false, "y", 0, false, ()=>{
+			mainPlayer.onmove("KeyS", 1, "y", 0, false, ()=>{
 				mainPlayer.mouseControls.face.exe();
 			});
-			mainPlayer.onmove("KeyW", true, "y", 1, false, ()=>{
+			mainPlayer.onmove("KeyW", -1, "y", 1, false, ()=>{
 				mainPlayer.mouseControls.face.exe();
 			});			
-			mainPlayer.onmove("KeyA", true, "x", null, false, false);
-			mainPlayer.onmove("KeyD", false, "x", null, false, false);	
+			mainPlayer.onmove("KeyA", -1, "x", null, false, false);
+			mainPlayer.onmove("KeyD", 1, "x", null, false, false);	
 			var update = ()=>{
 				canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-				fps.innerHTML = mainPlayer.x + " | " + mainPlayer.y;
 				var temp = Object.getOwnPropertySymbols(allEntities);
+				fps.innerHTML = temp.length;				
+				canvas.ctx.drawImage(art["download2.png"], 0, 0);
 				for (var i = 0; i < temp.length; i++) allEntities[temp[i]].draw(canvas.ctx);
 				//console.log("LOL");
 			}	
 			mainPlayer.onCursorClick("leftClick", "left", 1000/60, (mouse, playerData)=>{
-				var temp = new entity([art["orb.png"]], playerData.x+0, playerData.y+0);
-				temp.moveTo(mouse.x-8-canvas.x, mouse.y-8-canvas.y);
-				temp.speed = 1;
+				var temp = new entity([art["orb.png"]], playerData.x+0, playerData.y+0, 8, 8, 4, 4);
+				//Offset height - offset
+				temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
+				temp.speed = 10;
 			}, false);
 			//var orb = new entity([art["orb.png"]], 100, 100);
 			//orb.speed = 5;
