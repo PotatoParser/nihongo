@@ -92,7 +92,7 @@
 			if (Math.round(actual) == Math.round(calc)) console.log("PERFECT");
 			else console.log(Math.round((actual-calc)/calc*100) + "%");
 		}
-		class entity {
+		class entity{
 			constructor(image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
 				this.img = image;
 				this.x = x || 0;
@@ -109,25 +109,31 @@
 					offY: offsetY || 0,
 					offWidth: (hitWidth || this.width),
 					offHeight: (hitHeight || this.height),
-				}				
+				}
+				this.collisionEvent = [];
+				this.colArea = {
+					x: [],
+					y: []
+				}
+				this.still = false,
 				allEntities[this.id] = this;				
 			}
 			draw(ctx){
-				ctx.drawImage(this.img[this.index], this.x-this.hit.offX, this.y-this.hit.offY, this.width, this.height);
+				if (!this.still) ctx.drawImage(this.img[this.index], this.x-this.hit.offX, this.y-this.hit.offY, this.width, this.height);
 			}
 			tp(x,y){
 				this.x = x;
 				this.y = y;
 			}
 			moveX(newX){
-				if (newX < this.x) this.x = checkAllX(this.y, this.x, newX, this, (c,o)=>{});
-				else this.x = checkAllX(this.y, this.x, newX+this.hit.offWidth, this, (c,o)=>{})-this.hit.offWidth;				
+				if (newX < this.x) this.x = this.checkAllX(this.y, this.x, newX, this, (c,o)=>{});
+				else this.x = this.checkAllX(this.y, this.x, newX+this.hit.offWidth, this, (c,o)=>{})-this.hit.offWidth;				
 			}			
 			moveY(newY){
-				if (newY < this.y) this.y = checkAllY(this.x, this.y, newY, this, (c,o)=>{});
-				else this.y = checkAllY(this.x, this.y, newY+this.hit.offHeight, this, (c,o)=>{})-this.hit.offHeight;
+				if (newY < this.y) this.y = this.checkAllY(this.x, this.y, newY, this, (c,o)=>{});
+				else this.y = this.checkAllY(this.x, this.y, newY+this.hit.offHeight, this, (c,o)=>{})-this.hit.offHeight;
 			}			
-			moveTo(x, y, reach, collision){
+			moveTo(x, y, reach){
 				//One pixel every frame
 				this.stopMoving();
 				var rise = y-this.y, run = x-this.x, dist = distance(x,y,this.x,this.y), xPos = 1, yPos = 1;
@@ -137,12 +143,8 @@
 				this.moveToLoop = setInterval(()=>{
 					var tempY = this.y + rise/dist*this.speed;
 					var tempX = this.x + run/dist*this.speed;
-					//console.log(dist, run/dist*this.speed, run/dist*this.speed, (Date.now()-timeStart), rise, run);
 					if ((tempX-x)*xPos >= 0 && (tempY-y)*yPos >= 0){ // -x means that tempY is negative 
-						//ERR((Date.now()-timeStart), 1000/60*dist/this.speed);
 						if (!reach) {
-							//this.y = y;
-							//this.x = x;
 							this.moveY(y);
 							this.moveX(x);
 							this.stopMoving();							
@@ -151,8 +153,6 @@
 					}
 					this.moveY(tempY);
 					this.moveX(tempX);
-					//this.y = tempY;
-					//this.x = tempX;
 				}, 1000/60);
 			}					
 			stopMoving(){
@@ -162,15 +162,66 @@
 					this.moveToLoop = false;
 				}
 			}
-			generateHitBox(){
-
+			oncollision(func){
+				this.collisionEvent.push(func);
 			}
+			checkAllY(x, y1, y2){
+				var allEnt = Object.getOwnPropertySymbols(allEntities);
+				for (var b = 0; b < allEnt.length; b++) {
+					if (allEnt[b] == this.id) continue;		
+					for (var i = 0; i < allEntities[allEnt[b]].colArea.y.length; i++) {
+						var temp = allEntities[allEnt[b]].colArea.y[i].check(x, y1, y2);
+						if (temp.impact) {
+							for (var a = 0; a < this.collisionEvent.length; a++) {
+								console.log(temp);
+								var atImpact = this.collisionEvent[a](this, temp.impact);
+								if (atImpact) return atImpact;
+							}
+						}
+						y2 = temp.y;
+					}
+				}
+				return y2;
+			}
+			checkAllX(y, x1, x2){
+				var allEnt = Object.getOwnPropertySymbols(allEntities);
+				for (var b = 0; b < allEnt.length; b++) {
+					if (allEnt[b] == this.id) continue;	
+					for (var i = 0; i < allEntities[allEnt[b]].colArea.x.length; i++) {
+						var temp = allEntities[allEnt[b]].colArea.x[i].check(y, x1, x2);
+						if (temp.impact) {
+							for (var a = 0; a < this.collisionEvent.length; a++) {
+								var atImpact = this.collisionEvent[a](this, temp.impact);
+								if (atImpact) return atImpact;
+							}
+						}		
+						x2 = temp.x;
+					}
+				}
+				return x2;
+			}		
 			destroy(){
 				if (this.moveToLoop) clearInterval(this.moveToLoop);
 				delete allEntities[this.id];				
 				delete this;
 			}
-		}		
+			addCollision(x, y, distance, direction){
+				switch(direction) {
+					case "y": this.colArea.x.push(new wall(x, y, distance, direction, this)); break;
+					case "x": this.colArea.y.push(new wall(x, y, distance, direction, this)); break;
+					default: break;
+				}
+			}
+		}	
+		class collisionEntity extends entity{
+			constructor(boxX, boxY, boxHeight, boxWidth){
+				super(null, 0, 0, 0, 0, 0, 0, 1, 1);
+				this.still = true;
+				this.speed = 0;
+				this.img = null;
+			}
+		}
+
 		// offset of 8, hitHeight of 
 		class player extends entity{
 			constructor(image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
@@ -352,36 +403,20 @@
 				}
 			}
 		}
-		allCol.push({y: new wall(0,0,canvas.width, "x", "wall"), x: new wall(0,0,canvas.height, "y", "wall")});
-		allCol.push({y: new wall(0,canvas.height,canvas.width, "x", "wall"), x: new wall(canvas.width,0,canvas.height, "y", "wall")});		
-		function checkAllY(x, y1, y2, current, onImpact){
-			for (var i = 0; i < allCol.length; i++) {
-				var temp = allCol[i].y.check(x, y1, y2);
-				if (temp.impact) {
-					var atImpact = onImpact(current, atImpact);
-					if (atImpact) return atImpact;
-				}
-				y2 = temp.y;
-			}
-			return y2;
-		}
-		function checkAllX(y, x1, x2, current, onImpact){
-			for (var i = 0; i < allCol.length; i++) {
-				var temp = allCol[i].x.check(y, x1, x2);
-				if (temp.impact) {
-					var atImpact = onImpact(current, atImpact);
-					if (atImpact) return atImpact;
-				}		
-				x2 = temp.x;
-			}
-			return x2;
-		}		
+		//allCol.push({y: new wall(0,0,canvas.width, "x", "wall"), x: new wall(0,0,canvas.height, "y", "wall")});
+		//allCol.push({y: new wall(0,canvas.height,canvas.width, "x", "wall"), x: new wall(canvas.width,0,canvas.height, "y", "wall")});		
 		async function start(){
 			document.addEventListener("contextmenu", (e)=>e.preventDefault());
 			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png", "download2.png"]);
 			//var player = new entity([art["test.png"], art["testBack.png"]]);
 			//onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp)
 			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 100, 100, 41, 58, 10, 8);
+			var box = new collisionEntity(0,0, 703, 703);
+			box.addCollision(0,0,canvas.width, "x");
+			box.addCollision(0,0,canvas.height, "y");
+			box.addCollision(0,canvas.height,canvas.width, "x");
+			box.addCollision(canvas.width,0,canvas.height, "y");
+			box.prop["type"] = "wall";
 			//player.draw(canvas.ctx);
 			/*var cur = new cursorMove((mouse)=>{
 				if (mainPlayer.moving()) return;
@@ -415,6 +450,7 @@
 			mainPlayer.onCursorClick("leftClick", "left", 1000/60, (mouse, playerData)=>{
 				var temp = new entity([art["orb.png"]], playerData.x+0, playerData.y+0, 8, 8, 4, 4);
 				//Offset height - offset
+				temp.oncollision((c, o)=>{if(o.prop["type"] == "wall") c.destroy();});
 				temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
 				temp.speed = 10;
 			}, false);
