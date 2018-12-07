@@ -7,33 +7,32 @@
 		// Generates an image for the map
 		var main1 = document.getElementsByTagName("CANVAS")[0];
 		var main = main1.getContext("2d");
-		async function readMap(image){
-			var other = new Image();
-			other.src = image;
+		async function readMap(image, size, replacer){
+			var other1 = new Image();
+			other1.src = image;
 			await new Promise((resolve)=>{
-				other.onload = ()=>{
+				other1.onload = ()=>{
 					resolve();
 				}
-			});
-			var other2 = new Image();
-			other2.src = "wall2.png";
-			await new Promise((resolve)=>{
-				other2.onload = ()=>{
-					resolve();
-				}
-			});
-						var other3 = new Image();
-			other3.src = "floor.png";
-			await new Promise((resolve)=>{
-				other3.onload = ()=>{
-					resolve();
-				}
-			});								
-			main.drawImage(other, 0, 0);
+			});	
+			var allImages = {
+				mainImage: other1
+			}
+			for (var key in replacer) {
+				var other = new Image();
+				other.src = image;
+				await new Promise((resolve)=>{
+					other.onload = ()=>{
+						resolve();
+					}
+				});				
+				allImages[key] = other;
+			}							
+			main.drawImage(allImages.mainImage, 0, 0);
 			var fin = [];
-			for (var y = 0; y < other.height; y++) {
+			for (var y = 0; y < allImages.mainImage.height; y++) {
 				var temp = [];
-				for (var x = 0; x < other.width; x++) {
+				for (var x = 0; x < allImages.mainImage.width; x++) {
 					var color = main.getImageData(x, y, 1, 1).data;
 					if (color[3] == 0) temp.push(null);
 					else if (color[0]+color[1]+color[2]+color[3] == 255) temp.push(255);
@@ -51,20 +50,20 @@
 			}
 			console.log(fin);
 			main.clearRect(0, 0, main1.width, main1.height);
-			main1.height = 11*64;
-			main1.width = 11*64;
+			main1.height = 26*24;
+			main1.width = 26*24;
 			for (var y = 0; y < fin.length; y++) {
 				for (var x = 0; x < fin[y].length; x++) {
-					if (fin[y][x] != 255) main.drawImage(other3, x*64, y*64, 64, 64);
+					if (fin[y][x] != 255) main.drawImage(other3, x*size, y*size, size, size);
 				}
 			}			
 			for (var y = 0; y < fin.length; y++) {
 				for (var x = 0; x < fin[y].length; x++) {
-					if (fin[y][x] == 255) main.drawImage(other2, x*64, y*64, 64, 128);
+					if (fin[y][x] == 255) main.drawImage(other2, x*size, y*size, size, size);
 				}
 			}
 		}
-		readMap("map1.png");
+		readMap("test2.png", 24, {});
 	</script>
 </body>
 </html>

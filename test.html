@@ -412,7 +412,7 @@
 			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png", "download2.png"]);
 			//var player = new entity([art["test.png"], art["testBack.png"]]);
 			//onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp)
-			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 100, 100, 41, 58, 10, 8);
+			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 100, 100, 41, 58, 10, 8, 48,48);
 			var box = new collisionEntity(0,0, 703, 703);
 			box.addCollision(0,0,canvas.width, "x");
 			box.addCollision(0,0,canvas.height, "y");
@@ -445,7 +445,7 @@
 				canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
 				var temp = Object.getOwnPropertySymbols(allEntities);
 				fps.innerHTML = temp.length;				
-				canvas.ctx.drawImage(art["download2.png"], 0, 0);
+				//canvas.ctx.drawImage(art["download2.png"], 0, 0);
 				for (var i = 0; i < temp.length; i++) allEntities[temp[i]].draw(canvas.ctx);
 				//console.log("LOL");
 			}	
@@ -454,7 +454,7 @@
 				//Offset height - offset
 				temp.oncollision((c, o)=>{if(o.prop["type"] == "wall") c.destroy();});
 				temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
-				temp.speed = 100;
+				temp.speed = 1;
 			}, false);
 			//var orb = new entity([art["orb.png"]], 100, 100);
 			//orb.speed = 5;
