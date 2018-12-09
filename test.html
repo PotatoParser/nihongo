@@ -21,6 +21,7 @@
 	<script>
 		// (C) Wilson Nguyen
 		// Faster method if you create a queue mechanic
+		// Use webworkers to speed up processing speed
 		function canvasGen(){
 			var temp = document.createElement("CANVAS");
 			temp.id = "screen";
@@ -56,7 +57,7 @@
 			return temp;
 		}
 		var allEntities = {};
-		var allCol = [];
+		var allCol = {};
 		class key{
 			constructor(keyCode, whenDown, whenUp, speed){
 				this.mainKey = keyCode;
@@ -168,7 +169,7 @@
 				this.collisionEvent.push(func);
 			}
 			checkAllY(x, y1, y2){
-				var allEnt = Object.getOwnPropertySymbols(allEntities);
+				var allEnt = Object.getOwnPropertySymbols(allCol);
 				for (var b = 0; b < allEnt.length; b++) {
 					if (allEnt[b] == this.id) continue;		
 					for (var i = 0; i < allEntities[allEnt[b]].colArea.y.length; i++) {
@@ -186,7 +187,7 @@
 				return y2;
 			}
 			checkAllX(y, x1, x2){
-				var allEnt = Object.getOwnPropertySymbols(allEntities);
+				var allEnt = Object.getOwnPropertySymbols(allCol);
 				for (var b = 0; b < allEnt.length; b++) {
 					if (allEnt[b] == this.id) continue;	
 					for (var i = 0; i < allEntities[allEnt[b]].colArea.x.length; i++) {
@@ -204,10 +205,12 @@
 			}		
 			destroy(){
 				if (this.moveToLoop) clearInterval(this.moveToLoop);
-				delete allEntities[this.id];				
+				delete allEntities[this.id];
+				delete allCol[this.id];				
 				delete this;
 			}
 			addCollision(x, y, distance, direction){
+				allCol[this.id] = this;
 				switch(direction) {
 					case "y": this.colArea.x.push(new wall(x, y, distance, direction, this)); break;
 					case "x": this.colArea.y.push(new wall(x, y, distance, direction, this)); break;
@@ -215,6 +218,15 @@
 				}
 			}
 		}	
+		class thread {
+			constructor(file) {
+				this.Thread = new Worker(file);
+			}
+			send(data){
+				this.Thread.postMessage(data);	
+			}
+
+		}
 		class collisionEntity extends entity{
 			constructor(boxX, boxY, boxHeight, boxWidth){
 				super(null, 0, 0, 0, 0, 0, 0, 1, 1);
@@ -357,6 +369,16 @@
 			}, 1000/60);
 			func();
 		}
+		var update = ()=>{
+			canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
+			var temp = Object.getOwnPropertySymbols(allEntities);
+			fps.innerHTML = temp.length;				
+			//canvas.ctx.drawImage(art["download2.png"], 0, 0);
+			for (var i = 0; i < temp.length; i++) {
+				allEntities[temp[i]].draw(canvas.ctx);
+			}
+			//console.log("LOL");
+		}				
 		function rand(min, max) {
 			if (min === max) return max;
 			return Math.round(Math.random()*(max-min) + min);
@@ -404,14 +426,10 @@
 					};	
 				}
 			}
-		}
-		//allCol.push({y: new wall(0,0,canvas.width, "x", "wall"), x: new wall(0,0,canvas.height, "y", "wall")});
-		//allCol.push({y: new wall(0,canvas.height,canvas.width, "x", "wall"), x: new wall(canvas.width,0,canvas.height, "y", "wall")});		
+		}	
 		async function start(){
 			document.addEventListener("contextmenu", (e)=>e.preventDefault());
 			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png", "download2.png"]);
-			//var player = new entity([art["test.png"], art["testBack.png"]]);
-			//onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp)
 			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 100, 100, 41, 58, 10, 8, 48,48);
 			var box = new collisionEntity(0,0, 703, 703);
 			box.addCollision(0,0,canvas.width, "x");
@@ -419,15 +437,7 @@
 			box.addCollision(0,canvas.height,canvas.width, "x");
 			box.addCollision(canvas.width,0,canvas.height, "y");
 			box.prop["type"] = "wall";
-			//player.draw(canvas.ctx);
-			/*var cur = new cursorMove((mouse)=>{
-				if (mainPlayer.moving()) return;
-				if (mouse.y-32 < mainPlayer.y) mainPlayer.index = 1;
-				else mainPlayer.index = 0;
-			});	*/
 			mainPlayer.speed = 5;			
-			//mainPlayer.onmove("KeyS", false, "y", 0, false, ()=>{cur.exe();});
-			//mainPlayer.onmove("KeyW", true, "y", 1, false, ()=>{cur.exe();});
 			mainPlayer.onCursorMove("face", (mouse, playerData)=>{
 				if (playerData.moving()) return;
 				if (mouse.y-32 < mainPlayer.y) playerData.index = 1;
@@ -441,14 +451,6 @@
 			});			
 			mainPlayer.onmove("KeyA", -1, "x", null, false, false);
 			mainPlayer.onmove("KeyD", 1, "x", null, false, false);	
-			var update = ()=>{
-				canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-				var temp = Object.getOwnPropertySymbols(allEntities);
-				fps.innerHTML = temp.length;				
-				//canvas.ctx.drawImage(art["download2.png"], 0, 0);
-				for (var i = 0; i < temp.length; i++) allEntities[temp[i]].draw(canvas.ctx);
-				//console.log("LOL");
-			}	
 			mainPlayer.onCursorClick("leftClick", "left", 1000/60, (mouse, playerData)=>{
 				var temp = new entity([art["orb.png"]], playerData.x+32-4, playerData.y+32-4, 8, 8, 4, 4);
 				//Offset height - offset
@@ -456,58 +458,9 @@
 				temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
 				temp.speed = 1;
 			}, false);
-			//var orb = new entity([art["orb.png"]], 100, 100);
-			//orb.speed = 5;
-			//orb.moveTo(500, 500);
 			testLoop(()=>{requestAnimationFrame(update);}, 0);
-			//new collision([[0,0], [0, canvas.height]], [[0, canvas.height],[canvas.width, canvas.height]], [[canvas.width, canvas.height],[canvas.width, 0]], [[canvas.width, 0],[0,0]]);
-			//for (var i = 0; i < 2000; i++) 
-			//enemies.push(new entity([art["enemy.png"], art["enemyBack"]], rand(0, window.innerHeight-20), rand(0, window.innerHeight-20)));
-			/*setInterval(()=>{
-				for (var i = 0; i < enemies.length; i++) {
-					var enemy = enemies[i];
-					if (enemy.x < mainPlayer.x) enemy.x+=rand(10,10);
-					if (enemy.y < mainPlayer.y) enemy.y+=rand(10,10);
-					if (enemy.y > mainPlayer.y) enemy.y-=rand(10,10);
-					if (enemy.x > mainPlayer.x) enemy.x-=rand(10,10);					
-				}
-			}, 1000/60);*/
-			//setInterval(()=>{requestAnimationFrame(update);}, 1000/60);
 		}
 		start();
-		//setTimeout(start, 10);
-		function collision(x1, y1, x2, y2){
-			var col = [[[0,0], [0, canvas.height]], [[0, canvas.height],[canvas.width, canvas.height]], [[canvas.width, canvas.height],[canvas.width, 0]], [[0, 0],[canvas.width,0]]];
-			for (var i = 0; i < col.length; i++) {
-				var temp = limiter(x1, y1, x2, y2, col[i]);
-				console.log("I: ", i, " | ", JSON.stringify(temp), " | ", x1, " : ", y1);
-				x2 = temp.x;
-				y2 = temp.y;
-			}
-			return {x:x2, y:y2};
-		}
-
-		function limiter(x1, y1, x2, y2, temp){
-			//var temp = [[0,0], [10, 0]];
-			if (temp[0][0] === temp[1][0]) {
-				if (!(y1 > temp[0][1] && y2 < temp[1][1])) return {x:x2, y:y2};
-				if ((x1 > temp[0][0] && temp[0][0] > x2) || (x1 < temp[0][0] && temp[0][0] < x2)) {
-					return {x:temp[0][0], y:y2};
-				}
-				return {x:x2, y:y2};
-			} else if (temp[0][1] === temp[1][1]) {
-				console.log(x1, y1, x2, y2);
-				if (!(x1 > temp[0][0] && x2 < temp[1][0])) return {x:x2, y:y2};
-				if ((y1 >= temp[0][1] && temp[0][1] >= y2) || (y1 < temp[0][1] && temp[0][1] < y2)) {
-					console.log("DONE");
-					return {x:x2, y:temp[0][1]};
-				}
-				return {x:x2, y:y2};
-			}
-			//if (x < temp[0][0] && x > temp[1][0]);
-			//if (y < temp[0][1] && y < temp[1][1]);
-			//return {x:x, y:y};
-		}
 	</script>
 </body>
 </html>
