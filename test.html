@@ -7,6 +7,7 @@
 	}
 	html{
 		cursor: url("cursor.png") 8 8, pointer;
+		background-color: #111111;
 	}
 	div{
 		position: fixed;
@@ -15,6 +16,7 @@
 		left: 10px;
 		user-select: none;
 		pointer-events: none;
+		color: white;
 	}
 </style>
 <div id="FPS">0</div>
@@ -56,8 +58,38 @@
 			}
 			return temp;
 		}
-		var allEntities = {};
-		var allCol = {};
+		var ENTITY = {};
+		var COLLISION = {};
+		class layer {
+			constructor(x, y, width, height, image){
+				this.element = document.createElement("CANVAS");
+				this.img = image || null;
+				this.x = x || 0;
+				this.y = y || 0;
+				this.width = width || 100;
+				this.height = height || 100;
+				document.body.appendChild(this.element);
+				this.ctx = this.element.getContext("2d");
+				this.setPosition();
+				this.setDimension();
+				this.reload();				
+			}
+			reload(){
+				if (this.img != null) {
+					this.ctx.drawImage(this.img, 0, 0, this.width, this.height);
+				}
+			}
+			setPosition(x, y){
+				this.element.style.position = "fixed";
+				this.element.style.left = `${x || this.x}px`;
+				this.element.style.top = `${y || this.y}px`;
+				this.element.style["z-index"] = "-10";
+			}
+			setDimension(width, height) {
+				this.element.width = width || this.width;
+				this.element.height = height || this.height;
+			}
+		}
 		class key{
 			constructor(keyCode, whenDown, whenUp, speed){
 				this.mainKey = keyCode;
@@ -119,7 +151,7 @@
 					y: []
 				}
 				this.still = false,
-				allEntities[this.id] = this;				
+				ENTITY[this.id] = this;				
 			}
 			draw(ctx){
 				if (!this.still) ctx.drawImage(this.img[this.index], this.x-this.hit.offX, this.y-this.hit.offY, this.width, this.height);
@@ -129,12 +161,12 @@
 				this.y = y;
 			}
 			moveX(newX){
-				if (newX < this.x) this.x = this.checkAllX(this.y, this.x, newX, this, (c,o)=>{});
-				else this.x = this.checkAllX(this.y, this.x, newX+this.hit.offWidth, this, (c,o)=>{})-this.hit.offWidth;				
+				if (newX < this.x) this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX);
+				else this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX+this.hit.offWidth)-this.hit.offWidth;				
 			}			
 			moveY(newY){
-				if (newY < this.y) this.y = this.checkAllY(this.x, this.y, newY, this, (c,o)=>{});
-				else this.y = this.checkAllY(this.x, this.y, newY+this.hit.offHeight, this, (c,o)=>{})-this.hit.offHeight;
+				if (newY < this.y) this.y = this.checkAllY(this.x, this.hit.offWidth, this.y, newY);
+				else this.y = this.checkAllY(this.x, this.hit.offWidth, this.y, newY+this.hit.offHeight)-this.hit.offHeight;
 			}			
 			moveTo(x, y, reach){
 				//One pixel every frame
@@ -168,15 +200,15 @@
 			oncollision(func){
 				this.collisionEvent.push(func);
 			}
-			checkAllY(x, y1, y2){
-				var allEnt = Object.getOwnPropertySymbols(allCol);
+			checkAllY(x, dist, y1, y2){
+				var allEnt = Object.getOwnPropertySymbols(COLLISION);
 				for (var b = 0; b < allEnt.length; b++) {
 					if (allEnt[b] == this.id) continue;		
-					for (var i = 0; i < allEntities[allEnt[b]].colArea.y.length; i++) {
-						var temp = allEntities[allEnt[b]].colArea.y[i].check(x, y1, y2);
+					for (var i = 0; i < ENTITY[allEnt[b]].colArea.y.length; i++) {
+						var temp = ENTITY[allEnt[b]].colArea.y[i].check(x, dist, y1, y2);
 						if (temp.impact) {
 							for (var a = 0; a < this.collisionEvent.length; a++) {
-								console.log(temp);
+								console.log(x, y1, y2, temp);
 								var atImpact = this.collisionEvent[a](this, temp.impact);
 								if (atImpact) return atImpact;
 							}
@@ -186,14 +218,15 @@
 				}
 				return y2;
 			}
-			checkAllX(y, x1, x2){
-				var allEnt = Object.getOwnPropertySymbols(allCol);
+			checkAllX(y, dist, x1, x2){
+				var allEnt = Object.getOwnPropertySymbols(COLLISION);
 				for (var b = 0; b < allEnt.length; b++) {
 					if (allEnt[b] == this.id) continue;	
-					for (var i = 0; i < allEntities[allEnt[b]].colArea.x.length; i++) {
-						var temp = allEntities[allEnt[b]].colArea.x[i].check(y, x1, x2);
+					for (var i = 0; i < ENTITY[allEnt[b]].colArea.x.length; i++) {
+						var temp = ENTITY[allEnt[b]].colArea.x[i].check(y, dist, x1, x2);
 						if (temp.impact) {
 							for (var a = 0; a < this.collisionEvent.length; a++) {
+								console.log(temp);
 								var atImpact = this.collisionEvent[a](this, temp.impact);
 								if (atImpact) return atImpact;
 							}
@@ -205,15 +238,26 @@
 			}		
 			destroy(){
 				if (this.moveToLoop) clearInterval(this.moveToLoop);
-				delete allEntities[this.id];
-				delete allCol[this.id];				
+				delete ENTITY[this.id];
+				delete COLLISION[this.id];				
 				delete this;
 			}
 			addCollision(x, y, distance, direction){
-				allCol[this.id] = this;
+				COLLISION[this.id] = this;
+				var exists = false;
 				switch(direction) {
-					case "y": this.colArea.x.push(new wall(x, y, distance, direction, this)); break;
-					case "x": this.colArea.y.push(new wall(x, y, distance, direction, this)); break;
+					case "y": 
+						for (var i = 0; i < this.colArea.x.length; i++) 
+							if (this.colArea.x[i].x == x && this.colArea.x[i].y == y && this.colArea.x[i].distance == distance) 
+								exists = true;
+						this.colArea.x.push(new wall(x, y, distance, direction, this)); 
+						break;
+					case "x": 
+						for (var i = 0; i < this.colArea.y.length; i++) 
+							if (this.colArea.y[i].x == x && this.colArea.y[i].y == y && this.colArea.y[i].distance == distance) 
+								exists = true;
+						if (!exists) this.colArea.y.push(new wall(x, y, distance, direction, this)); 
+						break;
 					default: break;
 				}
 			}
@@ -355,6 +399,118 @@
 			}
 
 		}
+		var box = new collisionEntity(0,0, 15*48, 15*48);
+		const testData = [["444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444"],["444444",255,255,255,255,255,255,255,255,255,255,255,255,255,"444444"],["ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","aaaaaa"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","444444","444444","444444","444444","444444","444444","ffffff","444444","444444","444444","444444","444444","444444","444444"],[255,255,255,255,255,255,255,"ffffff",255,255,255,255,255,255,255]];
+		const collisionTest = {"444444": "wall", 255: "wall"};		
+		function readMap(rawData, collisionCheck){
+			var map = new collisionEntity(0,0,15*48,15*48);
+			// Row Check
+			for (var i = 0; i < rawData.length; i++) {
+				//var start = false;
+				//var i = 1;
+				var top = false;
+				var bottom = false;
+				for (var j = 0; j < rawData[i].length; j++) {
+					// Exclude extraneous values
+					//if (i != rawData.length-1 && i != 0) {
+						//var top = rawData[i][j];
+					//}
+					var target = rawData[i][j];
+					if (collisionCheck[target] != undefined) {
+						if (i != 0 && top === false) 
+							if (collisionCheck[rawData[i-1][j]] == undefined) 
+								top = j;
+						if (i != rawData.length-1 && bottom === false) 
+							if (collisionCheck[rawData[i+1][j]] == undefined) 
+								bottom = j;
+					}
+					if (top !== false) {
+						if (collisionCheck[rawData[i-1][j]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
+							if (j == rawData[i].length-1 && collisionCheck[rawData[i-1][j]] == undefined) {
+								console.log(target, i, j);
+								console.log(rawData[i][j-1]);
+								j++;
+							}
+							console.log("TOP", i, top);
+								box.addCollision(top*48, i*48, (j-top)*48, "x");
+								top = false;
+						}
+					}
+					if (bottom !== false) {
+						if (collisionCheck[rawData[i+1][j]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
+							console.log("BOT", i, bottom);
+							if (j == rawData[i].length-1 && collisionCheck[rawData[i+1][j]] == undefined) {
+								j++;
+							}
+							box.addCollision(bottom*48, (i+1)*48, (j-bottom)*48, "x");
+							bottom = false;
+						}
+					}
+					/*if (collisionCheck[rawData[i][j]] != undefined) {
+						if (start === false) {
+							start = j;
+						} else if (j == rawData[i].length-1){
+							if (start !== false) {
+								box.addCollision(start*48, i*48, (j-start+1)*48, "x");
+								box.addCollision(start*48, (i+1)*48, (j-start+1)*48, "x");
+								start = false;
+							}
+						}
+					} else {
+						if (start !== false) {
+							box.addCollision(start*48, i*48, (j-start)*48, "x");
+							box.addCollision(start*48, (i+1)*48, (j-start)*48, "x");
+							start = false;
+						}
+					}*/
+				}
+			}
+			/*for (var i = 0; i < rawData.length; i++) {
+				var start = false;
+				for (var j = 0; j < rawData[i].length;j++) {
+					if (collisionCheck[rawData[j][i]] != undefined) {
+						if (start === false) {
+							start = j;
+						} else if (j == rawData[i].length-1){
+							if (start !== false) {
+								box.addCollision(i*48, start*48, (j-start+1)*48, "y");
+								box.addCollision((i+1)*48, start*48, (j-start+1)*48, "y");
+								start = false;
+							}
+						}
+					} else {
+						if (start !== false) {
+								box.addCollision(i*48, start*48, (j-start)*48, "y");
+								box.addCollision((i+1)*48, start*48, (j-start)*48, "y");
+							start = false;
+						}
+					}
+				}
+			}*/
+			/*for (var i = 0; i < rawData.length; i++) {
+				var left = false;
+				var right = false;
+				for (var j = 0; j < rawData[i].length;j++) {
+					if (collisionCheck[rawData[j][i]] != undefined) {
+						if (start === false) {
+							start = j;
+						} else if (j == rawData[i].length-1){
+							if (start !== false) {
+								box.addCollision(i*48, start*48, (j-start+1)*48, "y");
+								box.addCollision((i+1)*48, start*48, (j-start+1)*48, "y");
+								start = false;
+							}
+						}
+					} else {
+						if (start !== false) {
+								box.addCollision(i*48, start*48, (j-start)*48, "y");
+								box.addCollision((i+1)*48, start*48, (j-start)*48, "y");
+							start = false;
+						}
+					}
+				}
+			}*/
+		}
 		/*class collision{
 			constructor(){
 				this.allWalls = arguments;
@@ -371,11 +527,11 @@
 		}
 		var update = ()=>{
 			canvas.ctx.clearRect(0, 0, canvas.width, canvas.height);
-			var temp = Object.getOwnPropertySymbols(allEntities);
+			var temp = Object.getOwnPropertySymbols(ENTITY);
 			fps.innerHTML = temp.length;				
 			//canvas.ctx.drawImage(art["download2.png"], 0, 0);
 			for (var i = 0; i < temp.length; i++) {
-				allEntities[temp[i]].draw(canvas.ctx);
+				ENTITY[temp[i]].draw(canvas.ctx);
 			}
 			//console.log("LOL");
 		}				
@@ -393,16 +549,18 @@
 				return random-low+excludeMax;
 			}
 		}
-			var canvas = canvasGen();
+			//var canvas = canvasGen();
+	var canvas = new layer((window.innerWidth-15*Math.floor(window.innerHeight/15))/2, 1, 15*Math.floor(window.innerHeight/15), 15*Math.floor(window.innerHeight/15));
+	canvas.element.style["z-index"] = 0;	
 		class wall {
 			constructor(x, y, distance, direction, OBJ){
 				this.x = x;
 				this.y = y;
 				this.distance = distance;
 				if (direction === 'x') {
-					this.check = (x, y1, y2, onImpact)=>{
+					this.check = (x, dist, y1, y2, onImpact)=>{
 						var bounds = [this.x, this.x+this.distance];
-						if (!(bounds[0] <= x && x <= bounds[1])) return {y:y2, impact: false};
+						if (!((bounds[0] < x || bounds[0] < x+dist) && (x < bounds[1] || x+dist < bounds[1]))) return {y:y2, impact: false};
 						if (y1>y2) {
 							if (y1 >= this.y && this.y > y2) return {y:this.y, impact:OBJ};
 						} else {
@@ -412,10 +570,10 @@
 
 					};
 				} else if (direction === 'y') {
-					this.check = (y, x1, x2, onImpact)=>{
+					this.check = (y, dist, x1, x2, onImpact)=>{
 						//console.log(y,x1,x2);
 						var bounds = [this.y, this.y+this.distance];
-						if (!(bounds[0] <= y && y <= bounds[1])) return {x:x2, impact: false};
+						if (!((bounds[0] < y || bounds[0] <y+dist) && (y < bounds[1] || y+dist < bounds[0]))) return {x:x2, impact: false};
 						if (x1>x2) {
 							if (x1 >= this.x && this.x > x2) return {x:this.x, impact:OBJ}; // limit
 						}
@@ -427,17 +585,34 @@
 				}
 			}
 		}	
-		async function start(){
+		async function start(){			
 			document.addEventListener("contextmenu", (e)=>e.preventDefault());
-			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png", "download2.png"]);
-			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 100, 100, 41, 58, 10, 8, 48,48);
-			var box = new collisionEntity(0,0, 703, 703);
-			box.addCollision(0,0,canvas.width, "x");
-			box.addCollision(0,0,canvas.height, "y");
-			box.addCollision(0,canvas.height,canvas.width, "x");
-			box.addCollision(canvas.width,0,canvas.height, "y");
+			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png", "download3.png"]);
+			var lvl1 = new layer((window.innerWidth-15*Math.floor(window.innerHeight/15))/2, 1, 15*Math.floor(window.innerHeight/15), 15*Math.floor(window.innerHeight/15), art["download3.png"]);
+
+			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 300, 300, 36, 40, 6, 8, 48,48);
+			//var box = new collisionEntity(0,0, 703, 703);
+			//box.addCollision(0,0,canvas.width, "x");
+			//box.addCollision(0,0,canvas.height, "y");
+			//box.addCollision(0,canvas.height,canvas.width, "x");
+			//box.addCollision(canvas.width,0,canvas.height, "y");
 			box.prop["type"] = "wall";
-			mainPlayer.speed = 5;			
+			var drawCollision = ()=>{
+				var xDir = box.colArea.x;
+				var yDir = box.colArea.y;
+				for (var i = 0; i < xDir.length; i++) {
+					var temp = xDir[i];
+					lvl1.ctx.fillStyle = 'red';
+					lvl1.ctx.fillRect(temp.x-1, temp.y,2, temp.distance);
+				}
+				for (var i = 0; i < yDir.length; i++) {
+					var temp = yDir[i];
+					lvl1.ctx.fillStyle = 'blue';
+					lvl1.ctx.fillRect(temp.x, temp.y-1,temp.distance,2);
+				}
+			};
+			mainPlayer.oncollision((c, o)=>{if(o.prop["type"] == "wall") console.log()});
+			mainPlayer.speed = 4;			
 			mainPlayer.onCursorMove("face", (mouse, playerData)=>{
 				if (playerData.moving()) return;
 				if (mouse.y-32 < mainPlayer.y) playerData.index = 1;
@@ -456,9 +631,11 @@
 				//Offset height - offset
 				temp.oncollision((c, o)=>{if(o.prop["type"] == "wall") c.destroy();});
 				temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
-				temp.speed = 1;
+				temp.speed = 10;
 			}, false);
 			testLoop(()=>{requestAnimationFrame(update);}, 0);
+					readMap(testData, collisionTest);
+					drawCollision();
 		}
 		start();
 	</script>

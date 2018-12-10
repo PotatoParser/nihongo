@@ -48,10 +48,10 @@
 				}
 				fin.push(temp);
 			}
-			console.log(fin);
+			console.log(JSON.stringify(fin));
 			main.clearRect(0, 0, main1.width, main1.height);
-			main1.height = 30*24;
-			main1.width = 30*24;
+			main1.height = 15*48;
+			main1.width = 15*48;
 			/*for (var y = 0; y < fin.length; y++) {
 				for (var x = 0; x < fin[y].length; x++) {
 					if (fin[y][x] != 255) main.drawImage(other3, x*size, y*size, size, size);
@@ -65,7 +65,7 @@
 				}
 			}
 		}
-		readMap("map3.png", 24, {"255": "front.png", "444444": "top.png", "ffffff": "floor.png"});
+		readMap("map4.png", 48, {"255": "front.png", "444444": "top.png", "ffffff": "floor.png"});
 	</script>
 </body>
 </html>
