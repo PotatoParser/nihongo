@@ -991,8 +991,29 @@
 		//level1();
 	</script>
 	<script>
+		async function level2(){
+			var allRooms = [["E","WE","WS"],
+							["E","WSE","NW"],
+							["E","NWSE","W"],
+							[null,"N",null]];
+			var roomData = await levelGen(allRooms, "lvl2");
+			roomData[0][0].connect(roomData[0][1], "E");
+			roomData[0][1].connect(roomData[0][2], "E");
+			roomData[1][0].connect(roomData[1][1], "E");
+			roomData[1][1].connect(roomData[1][2], "E");
+			roomData[2][0].connect(roomData[2][1], "E");
+			roomData[2][1].connect(roomData[2][2], "E");
+			roomData[1][2].connect(roomData[0][2], "N");
+			roomData[1][1].connect(roomData[2][1], "S");
+			roomData[2][1].connect(roomData[3][1], "S");
+			roomData[2][1].load();
+			COLLISION = roomData[2][1].collision;
+			ENTITY = roomData[2][1].entities;
+		}
+		//level2();
+	</script>
+	<script>
 		async function level3(){
-			if (!MAINPLAYER) MAINPLAYER = await PLAYER();
 			var allRooms = [["None"]];
 			var roomData = await levelGen(allRooms, "lvl3");
 			console.log(roomData);
@@ -1000,7 +1021,28 @@
 			COLLISION = roomData[0][0].collision;
 			ENTITY = roomData[0][0].entities;
 		}
-		level3();
+		//level3();
+	</script>
+	<script>
+		async function level4(){
+			var allRooms = [["S","S",null],
+							["NE","NWSE","W"],
+							["E","NWSE","W"],
+							[null,"N",null]];
+			var roomData = await levelGen(allRooms, "lvl4");
+			roomData[0][0].connect(roomData[1][0], "S");
+			roomData[0][1].connect(roomData[1][1], "S");
+			roomData[1][0].connect(roomData[1][1], "E");
+			roomData[1][1].connect(roomData[1][2], "E");
+			roomData[2][0].connect(roomData[2][1], "E");
+			roomData[2][1].connect(roomData[2][2], "E");
+			roomData[1][1].connect(roomData[2][1], "S");
+			roomData[2][1].connect(roomData[3][1], "S");
+			roomData[3][1].load();
+			COLLISION = roomData[3][1].collision;
+			ENTITY = roomData[3][1].entities;					
+		}
+		level4();
 	</script>
 </body>
 </html>
