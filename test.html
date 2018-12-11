@@ -61,7 +61,7 @@
 		var ENTITY = {};
 		var COLLISION = {};
 		class layer {
-			constructor(x, y, width, height, image){
+			constructor(x, y, width, height, image, index){
 				this.element = document.createElement("CANVAS");
 				this.img = image || null;
 				this.x = x || 0;
@@ -70,6 +70,7 @@
 				this.height = height || 100;
 				//this.show();				
 				this.ctx = this.element.getContext("2d");
+				this.index = index || 0;
 				this.setPosition();
 				this.setDimension();
 				this.reload();				
@@ -83,7 +84,7 @@
 				this.element.style.position = "fixed";
 				this.element.style.left = `${x || this.x}px`;
 				this.element.style.top = `${y || this.y}px`;
-				this.element.style["z-index"] = "-10";
+				this.element.style["z-index"] = this.index;
 			}
 			setDimension(width, height) {
 				this.element.width = width || this.width;
@@ -157,17 +158,17 @@
 					x: [],
 					y: []
 				}
-				this.ENTITY = entity;
-				this.COLLISION = collision;
-				this.still = false,
-				this.ENTITY[this.id] = this;				
+				if (entity) this.ENTITY = entity;
+				if (collision) this.COLLISION = collision;
+				this.still = false;
+				if (entity) this.ENTITY[this.id] = this;				
 			}
 			draw(ctx){
 				if (!this.still) ctx.drawImage(this.img[this.index], this.x-this.hit.offX, this.y-this.hit.offY, this.width, this.height);
 			}
 			tp(x,y){
-				this.x = x;
-				this.y = y;
+				if (x) this.x = x;
+				if (y) this.y = y;
 			}
 			moveX(newX){
 				if (newX < this.x) this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX);
@@ -218,7 +219,7 @@
 						if (temp.impact) {
 							for (var a = 0; a < this.collisionEvent.length; a++) {
 								console.log(x, y1, y2, temp);
-								var atImpact = this.collisionEvent[a](this, temp.impact);
+								var atImpact = this.collisionEvent[a](this, temp.impact, temp);
 								if (atImpact) return atImpact;
 							}
 						}
@@ -236,7 +237,7 @@
 						if (temp.impact) {
 							for (var a = 0; a < this.collisionEvent.length; a++) {
 								console.log(temp);
-								var atImpact = this.collisionEvent[a](this, temp.impact);
+								var atImpact = this.collisionEvent[a](this, temp.impact, temp);
 								if (atImpact) return atImpact;
 							}
 						}		
@@ -292,10 +293,12 @@
 		// offset of 8, hitHeight of 
 		class player extends entity{
 			constructor(entity, collision, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
-				super(entity, collision, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height);
+				super(false, false, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height);
 				this.movement = [];
 				this.controls = {};
 				this.mouseControls = {};
+				this.entity = ENTITY;
+				this.collision = COLLISION;
 			}
 			onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp) {
 				if (typeof whenUp !== 'function') whenUp = ()=>{};
@@ -338,6 +341,67 @@
 					this.mouseControls[key].destroy();
 				}
 				this.destroy();
+			}
+			checkAllY(x, dist, y1, y2){
+				var allEnt = Object.getOwnPropertySymbols(COLLISION);
+				for (var b = 0; b < allEnt.length; b++) {
+					if (allEnt[b] == this.id) continue;		
+					for (var i = 0; i < ENTITY[allEnt[b]].colArea.y.length; i++) {
+						var temp = ENTITY[allEnt[b]].colArea.y[i].check(x, dist, y1, y2);
+						if (temp.impact) {
+							for (var a = 0; a < this.collisionEvent.length; a++) {
+								console.log(x, y1, y2, temp);
+								var atImpact = this.collisionEvent[a](this, temp.impact, temp);
+								if (atImpact) return atImpact;
+							}
+						}
+						y2 = temp.y;
+					}
+				}
+				return y2;
+			}
+			checkAllX(y, dist, x1, x2){
+				var allEnt = Object.getOwnPropertySymbols(COLLISION);
+				for (var b = 0; b < allEnt.length; b++) {
+					if (allEnt[b] == this.id) continue;	
+					for (var i = 0; i < ENTITY[allEnt[b]].colArea.x.length; i++) {
+						var temp = ENTITY[allEnt[b]].colArea.x[i].check(y, dist, x1, x2);
+						if (temp.impact) {
+							for (var a = 0; a < this.collisionEvent.length; a++) {
+								console.log("temp");
+								var atImpact = this.collisionEvent[a](this, temp.impact, temp);
+								if (atImpact) return atImpact;
+							}
+						}		
+						x2 = temp.x;
+					}
+				}
+				return x2;
+			}		
+			destroy(){
+				if (this.moveToLoop) clearInterval(this.moveToLoop);
+				delete ENTITY[this.id];
+				delete COLLISION[this.id];				
+				delete this;
+			}
+			addCollision(x, y, distance, direction){
+				COLLISION[this.id] = this;
+				var exists = false;
+				switch(direction) {
+					case "y": 
+						for (var i = 0; i < this.colArea.x.length; i++) 
+							if (this.colArea.x[i].x == x && this.colArea.x[i].y == y && this.colArea.x[i].distance == distance) 
+								exists = true;
+						this.colArea.x.push(new wall(x, y, distance, direction, this)); 
+						break;
+					case "x": 
+						for (var i = 0; i < this.colArea.y.length; i++) 
+							if (this.colArea.y[i].x == x && this.colArea.y[i].y == y && this.colArea.y[i].distance == distance) 
+								exists = true;
+						if (!exists) this.colArea.y.push(new wall(x, y, distance, direction, this)); 
+						break;
+					default: break;
+				}
 			}
 		}
 		class cursorMove{
@@ -411,7 +475,8 @@
 		var box = new collisionEntity(ENTITY, COLLISION, 0,0, 15*48, 15*48);
 		const testData = [["444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444"],["444444",255,255,255,255,255,255,255,255,255,255,255,255,255,"444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","444444","ffffff","444444","444444","444444","444444","ffffff","444444","444444","444444","444444","444444","444444","444444"],[255,255,255,255,255,255,255,"ffffff",255,255,255,255,255,255,255]];
 		const collisionTest = {"444444": "wall", 255: "wall"};		
-		function readMap(rawData, collisionCheck){
+		function readMap(rawData, collisionCheck, entity){
+			console.log(entity);
 			//var map = new collisionEntity(0,0,15*48,15*48);
 			// Row Check
 			for (var i = 0; i < rawData.length; i++) {
@@ -441,7 +506,7 @@
 								j++;
 							}
 							console.log("TOP", i, top);
-								box.addCollision(top*48, i*48, (j-top)*48, "x");
+								entity.addCollision(top*48, i*48, (j-top)*48, "x");
 								top = false;
 						}
 					}
@@ -451,7 +516,7 @@
 							if (j == rawData[i].length-1 && collisionCheck[rawData[i+1][j]] == undefined) {
 								j++;
 							}
-							box.addCollision(bottom*48, (i+1)*48, (j-bottom)*48, "x");
+							entity.addCollision(bottom*48, (i+1)*48, (j-bottom)*48, "x");
 							bottom = false;
 						}
 					}
@@ -479,7 +544,7 @@
 								j++;
 							}
 							console.log("LEFT", i, left);
-								box.addCollision(i*48, left*48, (j-left)*48, "y");
+								entity.addCollision(i*48, left*48, (j-left)*48, "y");
 								left = false;
 						}
 					}
@@ -489,7 +554,7 @@
 							if (j == rawData[i].length-1 && collisionCheck[rawData[j][i+1]] == undefined) {
 								j++;
 							}
-							box.addCollision((i+1)*48, right*48, (j-right)*48, "y");
+							entity.addCollision((i+1)*48, right*48, (j-right)*48, "y");
 							right = false;
 						}
 					}
@@ -561,7 +626,7 @@
 			}
 		}
 			//var canvas = canvasGen();
-	var canvas = new layer((window.innerWidth-15*Math.floor(window.innerHeight/15))/2, 1, 15*Math.floor(window.innerHeight/15), 15*Math.floor(window.innerHeight/15));
+	var canvas = new layer((window.innerWidth-15*Math.floor(window.innerHeight/15))/2, 1, 15*Math.floor(window.innerHeight/15), 15*Math.floor(window.innerHeight/15), false, 0);
 	canvas.show();
 	canvas.element.style["z-index"] = 0;	
 		class wall {
@@ -597,7 +662,7 @@
 				}
 			}
 		}	
-		async function start(){			
+		/*async function start(){			
 			document.addEventListener("contextmenu", (e)=>e.preventDefault());
 			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png", "download3.png"]);
 			var lvl1 = new layer((window.innerWidth-15*Math.floor(window.innerHeight/15))/2, 1, 15*Math.floor(window.innerHeight/15), 15*Math.floor(window.innerHeight/15), art["download3.png"]);
@@ -623,7 +688,7 @@
 					lvl1.ctx.fillRect(temp.x, temp.y-1,temp.distance,2);
 				}
 			};
-			mainPlayer.oncollision((c, o)=>{if(o.prop["type"] == "wall") console.log()});
+			mainPlayer.oncollision((c, o)=>{if(o.prop["type"] == "wall") console.log(c);});
 			mainPlayer.speed = 4;			
 			mainPlayer.onCursorMove("face", (mouse, playerData)=>{
 				if (playerData.moving()) return;
@@ -648,7 +713,7 @@
 			testLoop(()=>{requestAnimationFrame(update);}, 0);
 					readMap(testData, collisionTest);
 					drawCollision();
-		}
+		}*/
 		testLoop(()=>{requestAnimationFrame(update);}, 0);
 		//start();
 	</script>
@@ -657,8 +722,20 @@
 		const PLAYER = async ()=>{
 			var allImages = ["test.png", "testBack.png"];			
 			var playerArt = await loadImages(allImages);
-			var mainPlayer = new player(ENTITY, COLLISION, [playerArt["test.png"], playerArt["testBack.png"]], 7*48, 7*48, 36, 40, 6, 8, 48,48);
-			mainPlayer.oncollision((c, o)=>{if(o.prop["type"] == "wall") console.log()});
+			var mainPlayer = new player(false, false, [playerArt["test.png"], playerArt["testBack.png"]], 7*48, 7*48, 36, 40, 6, 8, 48,48);
+			mainPlayer.oncollision((c, o, i)=>{
+				var direction = "";
+				if (i["x"] != undefined) {
+					if (i["x"] == 0) {
+						direction = "W";
+					} else direction = "E";
+				} else {
+					if (i["y"] == 0) {
+						direction = "N";
+					} else direction = "S";
+				}
+				if(o.prop["type"] == "wall" && o.prop["room"] != undefined) o.prop["room"].changeRoom(direction);
+			});
 			mainPlayer.speed = 4;			
 			mainPlayer.onCursorMove("face", (mouse, playerData)=>{
 				if (playerData.moving()) return;
@@ -676,12 +753,12 @@
 			return mainPlayer;
 		}
 		var MAINPLAYER = false;
-			var createLayer = async (art)=>{
-				return new layer((window.innerWidth-15*Math.floor(window.innerHeight/15))/2, 1, 15*Math.floor(window.innerHeight/15), 15*Math.floor(window.innerHeight/15), (await loadImages([art]))[art]);
+			var createLayer = async (art, index)=>{
+				return new layer((window.innerWidth-15*Math.floor(window.innerHeight/15))/2, 1, 15*Math.floor(window.innerHeight/15), 15*Math.floor(window.innerHeight/15), (await loadImages([art]))[art], index);
 			};
-
 		class room {
-			constructor(mapName){
+			constructor(mapName, level){
+				this.level = level;
 				this.botLayer = null;
 				this.topLayer = null;
 				this.mapName = mapName;
@@ -692,25 +769,170 @@
 				this.S = null;
 				this.E =  null;
 				this.collisionLayer = new collisionEntity(this.entities, this.collision, 0,0,canvas.height, canvas.width);
-				this.collisionLayer.addCollision(0,0,canvas.width, "x");
-				this.collisionLayer.addCollision(0,0,canvas.height, "y");
-				this.collisionLayer.addCollision(0,canvas.height,canvas.width, "x");
-				this.collisionLayer.addCollision(canvas.width,0,canvas.height, "y");
+				//this.collisionLayer.prop["type"] = "wall";
+				this.box = new collisionEntity(this.entities, this.collision, 0,0,canvas.height, canvas.width);
+				this.box.prop["type"] = "wall";
+				this.box.prop["room"] = this;
+				this.box.addCollision(0,0,canvas.width, "x");
+				this.box.addCollision(0,0,canvas.height, "y");
+				this.box.addCollision(0,canvas.height,canvas.width, "x");
+				this.box.addCollision(canvas.width,0,canvas.height, "y");
+
+				this.entities[MAINPLAYER.id] = MAINPLAYER;
 			}
 			load() {
 				this.botLayer.show();
 				this.topLayer.show();
 			}
+			unload() {
+				this.botLayer.hide();
+				this.topLayer.hide();
+			}
 			async layer() {
-				this.botLayer = await createLayer(`lvl1/Map${this.mapName}.png`);
-				this.topLayer = await createLayer(`lvl1/Map${this.mapName}Top.png`);
+				this.botLayer = await createLayer(`${this.level}/Map${this.mapName}.png`, -10);
+				this.topLayer = await createLayer(`${this.level}/Map${this.mapName}Top.png`, 10);
+			}
+			readMap(rawData, collisionCheck){
+			for (var i = 0; i < rawData.length; i++) {
+				//var start = false;
+				//var i = 1;
+				var top = false;
+				var bottom = false;
+				for (var j = 0; j < rawData[i].length; j++) {
+					// Exclude extraneous values
+					//if (i != rawData.length-1 && i != 0) {
+						//var top = rawData[i][j];
+					//}
+					var target = rawData[i][j];
+					if (collisionCheck[target] != undefined) {
+						if (i != 0 && top === false) 
+							if (collisionCheck[rawData[i-1][j]] == undefined) 
+								top = j;
+						if (i != rawData.length-1 && bottom === false) 
+							if (collisionCheck[rawData[i+1][j]] == undefined) 
+								bottom = j;
+					}
+					if (top !== false) {
+						if (collisionCheck[rawData[i-1][j]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
+							if (j == rawData[i].length-1 && collisionCheck[rawData[i-1][j]] == undefined) {
+								j++;
+							}
+							console.log("TOP", i, top);
+								this.collisionLayer.addCollision(top*48, i*48, (j-top)*48, "x");
+								top = false;
+						}
+					}
+					if (bottom !== false) {
+						if (collisionCheck[rawData[i+1][j]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
+							console.log("BOT", i, bottom);
+							if (j == rawData[i].length-1 && collisionCheck[rawData[i+1][j]] == undefined) {
+								j++;
+							}
+							this.collisionLayer.addCollision(bottom*48, (i+1)*48, (j-bottom)*48, "x");
+							bottom = false;
+						}
+					}
+				}
+			}
+			for (var i = 0; i < rawData.length; i++) {
+				var left = false;
+				var right = false;
+
+				for (var j = 0; j < rawData[i].length; j++) {
+					var target = rawData[j][i];
+					if (collisionCheck[target] != undefined) {
+						if (i != 0 && left === false) 
+							if (collisionCheck[rawData[j][i-1]] == undefined) 
+								left = j;
+						if (i != rawData.length-1 && right === false) 
+							if (collisionCheck[rawData[j][i+1]] == undefined) 
+								right = j;
+					}
+					if (left !== false) {
+						if (collisionCheck[rawData[j][i-1]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
+							if (j == rawData[i].length-1 && collisionCheck[rawData[j][i-1]] == undefined) {
+								console.log(target, i, j);
+								console.log(rawData[i][j-1]);
+								j++;
+							}
+							console.log("LEFT", i, left);
+								this.collisionLayer.addCollision(i*48, left*48, (j-left)*48, "y");
+								left = false;
+						}
+					}
+					if (right !== false) {
+						if (collisionCheck[rawData[j][i+1]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
+							console.log("RIGHT", i, right);
+							if (j == rawData[i].length-1 && collisionCheck[rawData[j][i+1]] == undefined) {
+								j++;
+							}
+							this.collisionLayer.addCollision((i+1)*48, right*48, (j-right)*48, "y");
+							right = false;
+						}
+					}
+				}
+			}			
+		}
+			connect(otherRoom, side){
+				switch(side) {
+					case "N":
+						this.N = otherRoom;
+						otherRoom.S = this;
+						break;
+					case "W":
+						this.W = otherRoom;
+						otherRoom.E = this;
+						break;
+					case "S":
+						this.S = otherRoom;
+						otherRoom.N = this;
+						break;
+					case "E":
+						this.E = otherRoom;
+						otherRoom.W = this;
+						break;
+					default: break;
+				}
+			}
+			changeRoom(direction){
+				this.unload();
+				switch(direction) {
+					case "N": 
+						MAINPLAYER.tp(false, canvas.height - MAINPLAYER.hit.offHeight);
+						break;
+					case "W":
+						MAINPLAYER.tp(canvas.width - MAINPLAYER.hit.offWidth);
+						break;
+					case "S":
+						MAINPLAYER.tp(false, 1);
+						break;
+					case "E":
+						MAINPLAYER.tp(1);
+						break;
+					default: break;
+				}
+				this[direction].load();				
+				COLLISION = this[direction].collision;
+				ENTITY = this[direction].entities;
 			}
 		}
-		async function level1(){
+		async function get(path, data) {
+			return new Promise(async (resolve, reject)=>{		
+				var temp = new XMLHttpRequest();
+				temp.open('GET', path, true);
+				temp.send();
+					temp.onreadystatechange = ()=>{
+						if (temp.readyState === 4) {
+							//var data = JSON.parse(temp.response);
+							//if (data.msg) resolve(data.msg);
+							resolve(temp.response);
+						}
+					};
+				});
+		}
+		async function levelGen(array, level){
 			if (!MAINPLAYER) MAINPLAYER = await PLAYER();
-			var allRooms = [["SE", "WS", "S"],
-							["NE", "NWS", "S"],
-							[null, "NE", "NW"]];
+			var allRooms = array;
 			var roomData = [];
 			for (var a = 0; a < allRooms.length; a++) {
 				var temp = [];
@@ -719,36 +941,66 @@
 						temp.push(null);
 						continue;
 					}
-
-					/*var room = {
-						botLayer: await createLayer(`lvl1/Map${allRooms[a][b]}.png`),
-						topLayer: await createLayer(`lvl1/Map${allRooms[a][b]}Top.png`),
-						entities: {},
-						collision: {},
-						N: null,
-						W: null,
-						S: null,
-						E: null,
-						collisionLayer: null,
-						load: null,
-					}
-					.collisionLayer = new collisionEntity(room.entities, room.collision, 0,0,canvas.height, canvas.width);
-					room.load = ()=>{
-							room.botLayer.show();
-							room.topLayer.show();
-						};
-						*/
-					//botLayer.drawCollision
-					var rooms = new room(allRooms[a][b]); 
+					var rooms = new room(allRooms[a][b], level); 
 					await rooms.layer();
+					var mapData = await get(`/${level}/Map${allRooms[a][b]}.json`);
+					//readMap(mapData, collisionTest, rooms.collisionLayer);
+					rooms.readMap(JSON.parse(mapData), collisionTest);
 					temp.push(rooms);
 				}
 				roomData.push(temp);
 			}
-			console.log(roomData);
-			roomData[0][1].load();
+			return roomData;
 		}
-		level1();
+		async function level1(){
+			//if (!MAINPLAYER) MAINPLAYER = await PLAYER();
+			var allRooms = [["SE", "WS", "S"],
+							["NE", "NWS", "NS"],
+							[null, "NE", "NW"]];
+			var roomData = await levelGen(allRooms, "lvl1");
+			/*for (var a = 0; a < allRooms.length; a++) {
+				var temp = [];
+				for (var b = 0; b < allRooms[a].length; b++) {
+					if (allRooms[a][b] == null) {
+						temp.push(null);
+						continue;
+					}
+					var rooms = new room(allRooms[a][b]); 
+					await rooms.layer();
+					var mapData = await get(`/lvl1/Map${allRooms[a][b]}.json`);
+					//readMap(mapData, collisionTest, rooms.collisionLayer);
+					rooms.readMap(JSON.parse(mapData), collisionTest);
+					temp.push(rooms);
+				}
+				roomData.push(temp);
+			}*/
+			console.log(roomData);
+			roomData[1][1].load();
+			COLLISION = roomData[1][1].collision;
+			ENTITY = roomData[1][1].entities;
+			roomData[0][0].connect(roomData[1][0], "S");
+			roomData[0][0].connect(roomData[0][1], "E");
+			roomData[0][1].connect(roomData[1][1], "S");
+			roomData[1][0].connect(roomData[1][1], "E");
+			roomData[1][1].connect(roomData[2][1], "S");
+			roomData[2][1].connect(roomData[2][2], "E");
+			roomData[2][2].connect(roomData[1][2], "N");
+			roomData[1][2].connect(roomData[0][2], "N");
+			//roomData[1][1].changeRoom("N");
+		}
+		//level1();
+	</script>
+	<script>
+		async function level3(){
+			if (!MAINPLAYER) MAINPLAYER = await PLAYER();
+			var allRooms = [["None"]];
+			var roomData = await levelGen(allRooms, "lvl3");
+			console.log(roomData);
+			roomData[0][0].load();
+			COLLISION = roomData[0][0].collision;
+			ENTITY = roomData[0][0].entities;
+		}
+		level3();
 	</script>
 </body>
 </html>
