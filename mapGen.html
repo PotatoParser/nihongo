@@ -7,7 +7,7 @@
 		// Generates an image for the map
 		var main1 = document.getElementsByTagName("CANVAS")[0];
 		var main = main1.getContext("2d");
-		async function readMap(image, size, replacer){
+		async function readMap(image, size, replacer, level, storageFile){
 			var other1 = new Image();
 			other1.src = image;
 			await new Promise((resolve)=>{
@@ -48,7 +48,8 @@
 				}
 				fin.push(temp);
 			}
-			console.log(JSON.stringify(fin));
+			//console.log(JSON.stringify(fin));
+			if (storageFile.indexOf("Top") == -1) send("/createMesh", {level:level, name:storageFile, array: fin});
 			main.clearRect(0, 0, main1.width, main1.height);
 			main1.height = 15*48;
 			main1.width = 15*48;
@@ -64,8 +65,36 @@
 					if (allImages[fin[y][x]] != undefined) main.drawImage(allImages[fin[y][x]], x*size, y*size, size, size);
 				}
 			}
+			send("/createMap", {level: level, name:storageFile, img: main1.toDataURL()});
+			main.clearRect(0,0,main1.width, main1.height);
 		}
-		readMap("map4.png", 48, {"255": "front.png", "444444": "top.png", "ffffff": "floor.png"});
+		async function send(path, data){
+			if (arguments.length === 1) {
+				data = {link: path};
+				path = path;
+			}
+			return new Promise(async (resolve, reject)=>{
+				var temp = new XMLHttpRequest();
+				temp.open('POST', path, true);
+				temp.setRequestHeader('Content-type', 'application/json');
+				//data[cookie] = cookie.read("login").value;
+				temp.send(JSON.stringify(data));
+				//var timeout = setTimeout(()=>{reject("Timed Out");}, 10000);
+				temp.onreadystatechange = ()=>{
+					if (temp.readyState === 4) {
+						resolve(JSON.parse(temp.response));
+					}
+				};
+			});
+		}		
+		//readMap("map4.png", 48, {"255": "front.png", "444444": "top.png", "ffffff": "floor.png"});
+		async function megaConvert(level, size, filter){
+			var data = await send("/openMap", {dir: level});
+			for (var i = 0; i < data.length; i++) {
+				readMap(`/${level}/${data[i]}`, size, filter, level, data[i]);
+			}
+		}
+		megaConvert("lvl1", 48, {"255": "front.png", "444444": "top.png", "empty": "floor.png"});
 	</script>
 </body>
 </html>
