@@ -162,7 +162,8 @@
 				if (entity) this.ENTITY = entity;
 				if (collision) this.COLLISION = collision;
 				this.still = false;
-				if (entity) this.ENTITY[this.id] = this;				
+				if (entity) this.ENTITY[this.id] = this;
+				this.alg = [];				
 			}
 			draw(ctx){
 				if (!this.still) ctx.drawImage(this.img[this.index], this.x-this.hit.offX, this.y-this.hit.offY, this.width, this.height);
@@ -176,6 +177,10 @@
 				else this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX+this.hit.offWidth)-this.hit.offWidth;				
 			}			
 			moveY(newY){
+				if (isNaN(newY)) {
+					console.log(newY, "ZERO1");
+					debugger;
+				}	
 				if (newY < this.y) this.y = this.checkAllY(this.x, this.hit.offWidth, this.y, newY);
 				else this.y = this.checkAllY(this.x, this.hit.offWidth, this.y, newY+this.hit.offHeight)-this.hit.offHeight;
 			}			
@@ -183,6 +188,7 @@
 				//One pixel every frame
 				this.stopMoving();
 				var rise = y-this.y, run = x-this.x, dist = distance(x,y,this.x,this.y), xPos = 1, yPos = 1;
+				if (dist == 0) return;
 				if (rise < 0) yPos = -1;
 				if (run < 0) xPos = -1;
 				this.moveToLoop = true;
@@ -193,10 +199,14 @@
 						if (!reach) {
 							this.moveY(y);
 							this.moveX(x);
-							this.stopMoving();							
+							this.stopMoving();	
 							return;
 						} else reach(this,x,y);
 					}
+					if (isNaN(tempY)) {
+						console.log(this.y, rise, dist, this.speed, tempY, "ZERO2");
+						debugger;
+					}						
 					this.moveY(tempY);
 					this.moveX(tempX);
 				}, 1000/60);
@@ -212,22 +222,35 @@
 				this.collisionEvent.push(func);
 			}
 			checkAllY(x, dist, y1, y2){
+				var temp2 = y2+0;
+				if (isNaN(temp2)) {
+					console.log(x, dist, y1, y2, "ZERO");
+					debugger;
+				}	
 				var allEnt = Object.getOwnPropertySymbols(this.COLLISION);
 				for (var b = 0; b < allEnt.length; b++) {
 					if (allEnt[b] == this.id) continue;		
 					for (var i = 0; i < this.ENTITY[allEnt[b]].colArea.y.length; i++) {
-						var temp = this.ENTITY[allEnt[b]].colArea.y[i].check(x, dist, y1, y2);
+						if (isNaN(temp2)) {
+							console.log(x, dist, y1, y2, "ONE");
+							debugger;
+						}								
+						var temp = this.ENTITY[allEnt[b]].colArea.y[i].check(x, dist, y1, temp2);
 						if (temp.impact) {
 							for (var a = 0; a < this.collisionEvent.length; a++) {
-								console.log(x, y1, y2, temp);
+								//console.log(x, y1, y2, temp);
 								var atImpact = this.collisionEvent[a](this, temp.impact, temp);
 								if (atImpact) return atImpact;
 							}
 						}
-						y2 = temp.y;
+						temp2 = temp.y;
+						if (isNaN(temp2)) {
+							console.log(x, dist, y1, y2, temp, "THREE");
+							debugger;
+						}						
 					}
 				}
-				return y2;
+				return temp2;
 			}
 			checkAllX(y, dist, x1, x2){
 				var allEnt = Object.getOwnPropertySymbols(this.COLLISION);
@@ -237,7 +260,7 @@
 						var temp = this.ENTITY[allEnt[b]].colArea.x[i].check(y, dist, x1, x2);
 						if (temp.impact) {
 							for (var a = 0; a < this.collisionEvent.length; a++) {
-								console.log(temp);
+								//console.log(temp);
 								var atImpact = this.collisionEvent[a](this, temp.impact, temp);
 								if (atImpact) return atImpact;
 							}
@@ -272,16 +295,15 @@
 					default: break;
 				}
 			}
+			addAlgorithm(newAlg){
+				this.alg.push(newAlg);
+			}
+			algorithm(){
+				for (var i = 0; i < this.alg.length; i++) {
+					this.alg[i](this);
+				}
+			}
 		}	
-		class thread {
-			constructor(file) {
-				this.Thread = new Worker(file);
-			}
-			send(data){
-				this.Thread.postMessage(data);	
-			}
-
-		}
 		class collisionEntity extends entity{
 			constructor(entity, collision, boxX, boxY, boxHeight, boxWidth){
 				super(entity, collision, null, 0, 0, 0, 0, 0, 0, 1, 1);
@@ -351,7 +373,7 @@
 						var temp = ENTITY[allEnt[b]].colArea.y[i].check(x, dist, y1, y2);
 						if (temp.impact) {
 							for (var a = 0; a < this.collisionEvent.length; a++) {
-								console.log(x, y1, y2, temp);
+								//console.log(x, y1, y2, temp);
 								var atImpact = this.collisionEvent[a](this, temp.impact, temp);
 								if (atImpact) return atImpact;
 							}
@@ -369,7 +391,7 @@
 						var temp = ENTITY[allEnt[b]].colArea.x[i].check(y, dist, x1, x2);
 						if (temp.impact) {
 							for (var a = 0; a < this.collisionEvent.length; a++) {
-								console.log("temp");
+								//console.log("temp");
 								var atImpact = this.collisionEvent[a](this, temp.impact, temp);
 								if (atImpact) return atImpact;
 							}
@@ -477,7 +499,7 @@
 		const testData = [["444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444"],["444444",255,255,255,255,255,255,255,255,255,255,255,255,255,"444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","444444","ffffff","444444","444444","444444","444444","ffffff","444444","444444","444444","444444","444444","444444","444444"],[255,255,255,255,255,255,255,"ffffff",255,255,255,255,255,255,255]];
 		const collisionTest = {"444444": "wall", 255: "wall"};		
 		function readMap(rawData, collisionCheck, entity){
-			console.log(entity);
+			//console.log(entity);
 			//var map = new collisionEntity(0,0,15*48,15*48);
 			// Row Check
 			for (var i = 0; i < rawData.length; i++) {
@@ -609,6 +631,7 @@
 			//canvas.ctx.drawImage(art["download2.png"], 0, 0);
 			for (var i = 0; i < temp.length; i++) {
 				ENTITY[temp[i]].draw(canvas.ctx);
+				ENTITY[temp[i]].algorithm();
 			}
 			//console.log("LOL");
 		}				
@@ -644,6 +667,10 @@
 						} else {
 							if (y2 >= this.y && this.y > y1) return {y:this.y, impact:OBJ};
 						}
+						if (isNaN(y2)) {
+							console.log(x, dist, y1, y2, "TWO");
+							debugger;
+						}
 						return {y:y2, impact: false};
 
 					};
@@ -658,6 +685,7 @@
 						else {
 							if(x2 >= this.x && this.x > x1) return {x:this.x, impact:OBJ};
 						}
+
 						return {x:x2, impact: false};
 					};	
 				}
@@ -797,6 +825,7 @@
 			for (var i = 0; i < rawData.length; i++) {
 				//var start = false;
 				//var i = 1;
+				this.collisionLayer.prop["type"] = "room";
 				var top = false;
 				var bottom = false;
 				for (var j = 0; j < rawData[i].length; j++) {
@@ -953,32 +982,36 @@
 			}
 			return roomData;
 		}
+		var simpleTarget = (c)=>{
+			if (Math.abs(MAINPLAYER.x-c.x) > c.speed){
+				if (c.x < MAINPLAYER.x) {
+					c.moveX(c.x+c.speed);
+				} else if (c.x > MAINPLAYER.x) c.moveX(c.x-c.speed);
+			}
+			if (Math.abs(MAINPLAYER.y-c.y) > c.speed) {
+				if (c.y < MAINPLAYER.y) {	
+					c.moveY(c.y+c.speed);
+				} else if (c.y > MAINPLAYER.y) c.moveY(c.y-c.speed);	
+			}
+		}
+		var randMove = (c)=>{
+			if (c.moveToLoop) {
+				return;
+			}
+			var temp = rand(1,15);
+			var temp2 = rand(1,15);		
+			c.moveTo(temp*SCALE, temp2*SCALE);			
+		}
 		async function level1(){
-			//if (!MAINPLAYER) MAINPLAYER = await PLAYER();
 			var allRooms = [["SE", "WS", "S"],
 							["NE", "NWS", "NS"],
 							[null, "NE", "NW"]];
 			var roomData = await levelGen(allRooms, "lvl1");
-			/*for (var a = 0; a < allRooms.length; a++) {
-				var temp = [];
-				for (var b = 0; b < allRooms[a].length; b++) {
-					if (allRooms[a][b] == null) {
-						temp.push(null);
-						continue;
-					}
-					var rooms = new room(allRooms[a][b]); 
-					await rooms.layer();
-					var mapData = await get(`/lvl1/Map${allRooms[a][b]}.json`);
-					//readMap(mapData, collisionTest, rooms.collisionLayer);
-					rooms.readMap(JSON.parse(mapData), collisionTest);
-					temp.push(rooms);
-				}
-				roomData.push(temp);
-			}*/
+			var otherArt = await loadImages(["art/woodenChest.png", "test.png"]);
 			console.log(roomData);
-			roomData[1][1].load();
-			COLLISION = roomData[1][1].collision;
-			ENTITY = roomData[1][1].entities;
+			roomData[0][0].load();
+			COLLISION = roomData[0][0].collision;
+			ENTITY = roomData[0][0].entities;
 			roomData[0][0].connect(roomData[1][0], "S");
 			roomData[0][0].connect(roomData[0][1], "E");
 			roomData[0][1].connect(roomData[1][1], "S");
@@ -987,9 +1020,22 @@
 			roomData[2][1].connect(roomData[2][2], "E");
 			roomData[2][2].connect(roomData[1][2], "N");
 			roomData[1][2].connect(roomData[0][2], "N");
-			//roomData[1][1].changeRoom("N");
+			var temp = new entity(roomData[0][0].entities, roomData[0][0].collision, [otherArt["art/woodenChest.png"]], 7*SCALE, 7*SCALE, false, false, false, false, SCALE,SCALE);			
+			for (var i = 0; i < 200; i++) {
+			var enemy = new entity(roomData[0][0].entities, roomData[0][0].collision, [otherArt["test.png"]], 3*SCALE, 3*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
+			enemy.addAlgorithm(randMove);
+			enemy.speed = 3;
+			enemy.oncollision((c,o)=>{
+				//if(o.prop["type"] == "wall" || o.prop["type"] == "room") {
+					c.stopMoving();
+					//clearInterval(c.moveToLoop);
+					//c.tp(Math.floor(c.x), Math.floor(c.y));
+					//c.moveToLoop = false;
+				//}
+			});
+			}
 		}
-		//level1();
+		level1();
 	</script>
 	<script>
 		async function level2(){
@@ -1011,6 +1057,7 @@
 			COLLISION = roomData[2][1].collision;
 			ENTITY = roomData[2][1].entities;
 		}
+
 		//level2();
 	</script>
 	<script>
@@ -1043,7 +1090,7 @@
 			COLLISION = roomData[3][1].collision;
 			ENTITY = roomData[3][1].entities;					
 		}
-		level4();
+		//level4();
 	</script>
 </body>
 </html>
