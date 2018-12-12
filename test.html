@@ -60,6 +60,7 @@
 		}
 		var ENTITY = {};
 		var COLLISION = {};
+		var SCALE = Math.floor(window.innerHeight/15);
 		class layer {
 			constructor(x, y, width, height, image, index){
 				this.element = document.createElement("CANVAS");
@@ -626,7 +627,7 @@
 			}
 		}
 			//var canvas = canvasGen();
-	var canvas = new layer((window.innerWidth-15*Math.floor(window.innerHeight/15))/2, 1, 15*Math.floor(window.innerHeight/15), 15*Math.floor(window.innerHeight/15), false, 0);
+	var canvas = new layer((window.innerWidth-15*SCALE)/2, 1, 15*SCALE, 15*SCALE, false, 0);
 	canvas.show();
 	canvas.element.style["z-index"] = 0;	
 		class wall {
@@ -722,7 +723,7 @@
 		const PLAYER = async ()=>{
 			var allImages = ["test.png", "testBack.png"];			
 			var playerArt = await loadImages(allImages);
-			var mainPlayer = new player(false, false, [playerArt["test.png"], playerArt["testBack.png"]], 7*48, 7*48, 36, 40, 6, 8, 48,48);
+			var mainPlayer = new player(false, false, [playerArt["test.png"], playerArt["testBack.png"]], 7*SCALE, 7*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
 			mainPlayer.oncollision((c, o, i)=>{
 				var direction = "";
 				if (i["x"] != undefined) {
@@ -754,7 +755,7 @@
 		}
 		var MAINPLAYER = false;
 			var createLayer = async (art, index)=>{
-				return new layer((window.innerWidth-15*Math.floor(window.innerHeight/15))/2, 1, 15*Math.floor(window.innerHeight/15), 15*Math.floor(window.innerHeight/15), (await loadImages([art]))[art], index);
+				return new layer((window.innerWidth-15*SCALE)/2, 1, 15*SCALE, 15*SCALE, (await loadImages([art]))[art], index);
 			};
 		class room {
 			constructor(mapName, level){
@@ -818,7 +819,7 @@
 								j++;
 							}
 							console.log("TOP", i, top);
-								this.collisionLayer.addCollision(top*48, i*48, (j-top)*48, "x");
+								this.collisionLayer.addCollision(top*SCALE, i*SCALE, (j-top)*SCALE, "x");
 								top = false;
 						}
 					}
@@ -828,7 +829,7 @@
 							if (j == rawData[i].length-1 && collisionCheck[rawData[i+1][j]] == undefined) {
 								j++;
 							}
-							this.collisionLayer.addCollision(bottom*48, (i+1)*48, (j-bottom)*48, "x");
+							this.collisionLayer.addCollision(bottom*SCALE, (i+1)*SCALE, (j-bottom)*SCALE, "x");
 							bottom = false;
 						}
 					}
@@ -856,7 +857,7 @@
 								j++;
 							}
 							console.log("LEFT", i, left);
-								this.collisionLayer.addCollision(i*48, left*48, (j-left)*48, "y");
+								this.collisionLayer.addCollision(i*SCALE, left*SCALE, (j-left)*SCALE, "y");
 								left = false;
 						}
 					}
@@ -866,7 +867,7 @@
 							if (j == rawData[i].length-1 && collisionCheck[rawData[j][i+1]] == undefined) {
 								j++;
 							}
-							this.collisionLayer.addCollision((i+1)*48, right*48, (j-right)*48, "y");
+							this.collisionLayer.addCollision((i+1)*SCALE, right*SCALE, (j-right)*SCALE, "y");
 							right = false;
 						}
 					}
