@@ -4,12 +4,13 @@
 	<style>
 	canvas{
 		outline: 5px solid black;
+		user-select: none;
 	}
 	html{
 		cursor: url("cursor.png") 8 8, pointer;
 		background-color: #111111;
 	}
-	div{
+	/*div{
 		position: fixed;
 		top: 10px;
 		font-size: 40px;
@@ -17,6 +18,14 @@
 		user-select: none;
 		pointer-events: none;
 		color: white;
+	}*/
+	.slot{
+		outline: 1px dotted white;
+		position: absolute;
+	}
+	.inventory{
+		outline: 5px dashed white;
+		position:fixed;
 	}
 </style>
 <div id="FPS">0</div>
@@ -61,6 +70,44 @@
 		var ENTITY = {};
 		var COLLISION = {};
 		var SCALE = Math.floor(window.innerHeight/15);
+		class wall {
+			constructor(x, y, distance, direction, OBJ){
+				this.x = x;
+				this.y = y;
+				this.distance = distance;
+				if (direction === 'x') {
+					this.check = (x, dist, y1, y2, onImpact)=>{
+						var bounds = [this.x, this.x+this.distance];
+						if (!((bounds[0] < x || bounds[0] < x+dist) && (x < bounds[1] || x+dist < bounds[1]))) return {y:y2, impact: false, old: y2};
+						if (y1>y2) {
+							if (y1 >= this.y && this.y > y2) return {y:this.y, impact:OBJ, old:y2};
+						} else {
+							if (y2 >= this.y && this.y > y1) return {y:this.y, impact:OBJ, old:y2};
+						}
+						if (isNaN(y2)) {
+							console.log(x, dist, y1, y2, "TWO");
+							debugger;
+						}
+						return {y:y2, impact: false, old:y2};
+
+					};
+				} else if (direction === 'y') {
+					this.check = (y, dist, x1, x2, onImpact)=>{
+						//console.log(y,x1,x2);
+						var bounds = [this.y, this.y+this.distance];
+						if (!((bounds[0] < y || bounds[0] <y+dist) && (y < bounds[1] || y+dist < bounds[0]))) return {x:x2, impact: false, old:x2};
+						if (x1>x2) {
+							if (x1 >= this.x && this.x > x2) return {x:this.x, impact:OBJ, old:x2}; // limit
+						}
+						else {
+							if(x2 >= this.x && this.x > x1) return {x:this.x, impact:OBJ, old:x2};
+						}
+
+						return {x:x2, impact: false, old:x2};
+					};	
+				}
+			}
+		}			
 		class layer {
 			constructor(x, y, width, height, image, index){
 				this.element = document.createElement("CANVAS");
@@ -163,7 +210,8 @@
 				if (collision) this.COLLISION = collision;
 				this.still = false;
 				if (entity) this.ENTITY[this.id] = this;
-				this.alg = [];				
+				this.alg = [];	
+				this.movehit = false;
 			}
 			draw(ctx){
 				if (!this.still) ctx.drawImage(this.img[this.index], this.x-this.hit.offX, this.y-this.hit.offY, this.width, this.height);
@@ -174,7 +222,8 @@
 			}
 			moveX(newX){
 				if (newX < this.x) this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX);
-				else this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX+this.hit.offWidth)-this.hit.offWidth;				
+				else this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX+this.hit.offWidth)-this.hit.offWidth;	
+				if (this.movehit) this.hitbox();			
 			}			
 			moveY(newY){
 				if (isNaN(newY)) {
@@ -183,6 +232,7 @@
 				}	
 				if (newY < this.y) this.y = this.checkAllY(this.x, this.hit.offWidth, this.y, newY);
 				else this.y = this.checkAllY(this.x, this.hit.offWidth, this.y, newY+this.hit.offHeight)-this.hit.offHeight;
+				if (this.movehit) this.hitbox();			
 			}			
 			moveTo(x, y, reach){
 				//One pixel every frame
@@ -240,7 +290,10 @@
 							for (var a = 0; a < this.collisionEvent.length; a++) {
 								//console.log(x, y1, y2, temp);
 								var atImpact = this.collisionEvent[a](this, temp.impact, temp);
-								if (atImpact) return atImpact;
+								if (atImpact) {
+									console.log("SOMETHING");
+									return atImpact;
+								}
 							}
 						}
 						temp2 = temp.y;
@@ -262,7 +315,10 @@
 							for (var a = 0; a < this.collisionEvent.length; a++) {
 								//console.log(temp);
 								var atImpact = this.collisionEvent[a](this, temp.impact, temp);
-								if (atImpact) return atImpact;
+								if (atImpact) {
+									console.log("SOMETHING");
+									return atImpact;
+								}
 							}
 						}		
 						x2 = temp.x;
@@ -295,6 +351,39 @@
 					default: break;
 				}
 			}
+			hitbox(xOffset, yOffset, widthT, heightT){
+				if (xOffset === true) this.movehit = true;
+				this.colArea.x = [];
+				this.colArea.y = [];
+				//var tempX = this.hit.offX || (this.x+(xOffset || 0));
+				//var tempY = this.hit.offY || (this.y+(yOffset || 0));
+				var tempX = (typeof xOffset == 'number') ? this.x+xOffset : this.x;
+				var tempY = (typeof yOffset == 'number') ? this.y+yOffset : this.y;
+				//var tempY = this.hit.offY || (this.y+(yOffset || 0));				
+				var tempWidth = (typeof widthT == 'number') ? widthT : this.hit.offWidth;
+				var tempHeight = (typeof heightT == 'number') ? heightT : this.hit.offHeight;
+				console.log(tempX, tempY, tempWidth, tempHeight);
+				this.addCollision(tempX, tempY, tempWidth, "x");
+				this.addCollision(tempX, tempY, tempHeight, "y");
+				this.addCollision(tempX, tempY+tempHeight, tempWidth, "x");
+				this.addCollision(tempX+tempWidth, tempY, tempHeight, "y");
+			}
+			modifiedHitbox(){
+				this.colArea.x = [];
+				this.colArea.y = [];
+				//var tempX = this.hit.offX || (this.x+(xOffset || 0));
+				//var tempY = this.hit.offY || (this.y+(yOffset || 0));
+				var tempX = this.x+(xOffset || this.hit.offX);
+				var tempY = this.y+(yOffset || this.hit.offY);
+				//var tempY = this.hit.offY || (this.y+(yOffset || 0));				
+				var tempWidth =  this.hit.offWidth;
+				var tempHeight = this.hit.offHeight;
+				console.log(tempX, tempY, tempWidth, tempHeight);
+				this.addCollision(tempX, tempY, tempWidth, "x");
+				this.addCollision(tempX, tempY, tempHeight, "y");
+				this.addCollision(tempX, tempY+tempHeight, tempWidth, "x");
+				this.addCollision(tempX+tempWidth, tempY, tempHeight, "y");
+			}
 			addAlgorithm(newAlg){
 				this.alg.push(newAlg);
 			}
@@ -322,6 +411,7 @@
 				this.mouseControls = {};
 				this.entity = ENTITY;
 				this.collision = COLLISION;
+				this.prop.type = "player";
 			}
 			onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp) {
 				if (typeof whenUp !== 'function') whenUp = ()=>{};
@@ -653,44 +743,6 @@
 	var canvas = new layer((window.innerWidth-15*SCALE)/2, 1, 15*SCALE, 15*SCALE, false, 0);
 	canvas.show();
 	canvas.element.style["z-index"] = 0;	
-		class wall {
-			constructor(x, y, distance, direction, OBJ){
-				this.x = x;
-				this.y = y;
-				this.distance = distance;
-				if (direction === 'x') {
-					this.check = (x, dist, y1, y2, onImpact)=>{
-						var bounds = [this.x, this.x+this.distance];
-						if (!((bounds[0] < x || bounds[0] < x+dist) && (x < bounds[1] || x+dist < bounds[1]))) return {y:y2, impact: false};
-						if (y1>y2) {
-							if (y1 >= this.y && this.y > y2) return {y:this.y, impact:OBJ};
-						} else {
-							if (y2 >= this.y && this.y > y1) return {y:this.y, impact:OBJ};
-						}
-						if (isNaN(y2)) {
-							console.log(x, dist, y1, y2, "TWO");
-							debugger;
-						}
-						return {y:y2, impact: false};
-
-					};
-				} else if (direction === 'y') {
-					this.check = (y, dist, x1, x2, onImpact)=>{
-						//console.log(y,x1,x2);
-						var bounds = [this.y, this.y+this.distance];
-						if (!((bounds[0] < y || bounds[0] <y+dist) && (y < bounds[1] || y+dist < bounds[0]))) return {x:x2, impact: false};
-						if (x1>x2) {
-							if (x1 >= this.x && this.x > x2) return {x:this.x, impact:OBJ}; // limit
-						}
-						else {
-							if(x2 >= this.x && this.x > x1) return {x:this.x, impact:OBJ};
-						}
-
-						return {x:x2, impact: false};
-					};	
-				}
-			}
-		}	
 		/*async function start(){			
 			document.addEventListener("contextmenu", (e)=>e.preventDefault());
 			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png", "download3.png"]);
@@ -749,9 +801,9 @@
 	<script>
 		//const REFRESH = new refresh();
 		const PLAYER = async ()=>{
-			var allImages = ["test.png", "testBack.png"];			
+			var allImages = ["test.png", "testBack.png", "orb.png"];			
 			var playerArt = await loadImages(allImages);
-			var mainPlayer = new player(false, false, [playerArt["test.png"], playerArt["testBack.png"]], 7*SCALE, 7*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
+			var mainPlayer = new player(false, false, [playerArt["test.png"], playerArt["testBack.png"]], 7*SCALE, 5*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
 			mainPlayer.oncollision((c, o, i)=>{
 				var direction = "";
 				if (i["x"] != undefined) {
@@ -779,6 +831,24 @@
 			});			
 			mainPlayer.onmove("KeyA", -1, "x", null, false, false);
 			mainPlayer.onmove("KeyD", 1, "x", null, false, false);	
+
+			mainPlayer.hitbox(true);
+			mainPlayer.onCursorClick("leftClick", "left", 0, (mouse, playerData)=>{
+				var temp = new entity(ENTITY, COLLISION, [playerArt["orb.png"]], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
+				//Offset height - offset
+				temp.oncollision((c, o, i)=>{
+					if(o.prop["type"] == "wall" || o.prop["type"] == "room") c.destroy();
+					else if(o.prop["type"] == "enemy"){
+						c.destroy();
+						if (o.prop["hp"] > 0) o.prop["hp"]--;
+						else o.destroy();
+					} else return i.old;
+				});
+				temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
+				temp.speed = 10;
+				//playerData.tp(mouse.x-4-canvas.x-playerData.hit.offWidth/2, mouse.y-4-canvas.y-playerData.hit.offHeight/2);
+				//playerData.hitbox(true);
+			}, false);
 			return mainPlayer;
 		}
 		var MAINPLAYER = false;
@@ -808,6 +878,7 @@
 				this.box.addCollision(canvas.width,0,canvas.height, "y");
 
 				this.entities[MAINPLAYER.id] = MAINPLAYER;
+				this.collision[MAINPLAYER.id] = MAINPLAYER;
 			}
 			load() {
 				this.botLayer.show();
@@ -829,10 +900,6 @@
 				var top = false;
 				var bottom = false;
 				for (var j = 0; j < rawData[i].length; j++) {
-					// Exclude extraneous values
-					//if (i != rawData.length-1 && i != 0) {
-						//var top = rawData[i][j];
-					//}
 					var target = rawData[i][j];
 					if (collisionCheck[target] != undefined) {
 						if (i != 0 && top === false) 
@@ -847,14 +914,12 @@
 							if (j == rawData[i].length-1 && collisionCheck[rawData[i-1][j]] == undefined) {
 								j++;
 							}
-							console.log("TOP", i, top);
 								this.collisionLayer.addCollision(top*SCALE, i*SCALE, (j-top)*SCALE, "x");
 								top = false;
 						}
 					}
 					if (bottom !== false) {
 						if (collisionCheck[rawData[i+1][j]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
-							console.log("BOT", i, bottom);
 							if (j == rawData[i].length-1 && collisionCheck[rawData[i+1][j]] == undefined) {
 								j++;
 							}
@@ -881,18 +946,14 @@
 					if (left !== false) {
 						if (collisionCheck[rawData[j][i-1]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
 							if (j == rawData[i].length-1 && collisionCheck[rawData[j][i-1]] == undefined) {
-								console.log(target, i, j);
-								console.log(rawData[i][j-1]);
 								j++;
 							}
-							console.log("LEFT", i, left);
 								this.collisionLayer.addCollision(i*SCALE, left*SCALE, (j-left)*SCALE, "y");
 								left = false;
 						}
 					}
 					if (right !== false) {
 						if (collisionCheck[rawData[j][i+1]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
-							console.log("RIGHT", i, right);
 							if (j == rawData[i].length-1 && collisionCheck[rawData[j][i+1]] == undefined) {
 								j++;
 							}
@@ -1002,6 +1063,51 @@
 			var temp2 = rand(1,15);		
 			c.moveTo(temp*SCALE, temp2*SCALE);			
 		}
+		class inventory {
+			constructor(x, y, width, squareWidth){
+				this.items = [[null, null, null, null],
+							  [null, null, null, null],
+							  [null, null, null, null],
+							  [null, null, null, null],
+							  [null, null, null, null]];
+				this.width = width;
+				this.inv = document.createElement("DIV");
+				this.inv.classList.add("inventory");
+				this.inv.style.width = this.width + "px";
+				this.inv.style.height = this.width + "px";
+				this.inv.style.top = y + "px";
+				this.inv.style.left = x + "px";
+				document.body.appendChild(this.inv);
+				var remainder = (width - squareWidth*4)/5;
+				for (var i = 0; i < 4; i++) {
+					for (var j = 0; j < 4; j++) {
+						this.inv.appendChild(this.genInv(i*squareWidth+(i+1)*remainder, j*squareWidth+(j+1)*remainder, squareWidth));
+					}
+				}
+			}
+			genInv(x,y,width){
+				var temp = document.createElement("DIV");
+				temp.classList.add("slot");
+				temp.style.width = width + "px";
+				temp.style.height = width + "px";
+				temp.style.top = y + "px";
+				temp.style.left = x + "px";
+				return temp;				
+			}
+			getSelected(){
+				return [this.items[0], this.items[1], this.items[2], this.items[3]];
+			}
+			getSlot(index) {
+				var row = Math.ceil(index/4);
+				return this.items[row][3-index%4];
+
+			}
+			setItem(slot, info) {
+				this.items[slot] = info;
+			}
+		}
+		var INVENTORY = new inventory(10, 6.25*SCALE, (window.innerWidth-15*SCALE)/2-20, 70);
+
 		async function level1(){
 			var allRooms = [["SE", "WS", "S"],
 							["NE", "NWS", "NS"],
@@ -1020,21 +1126,49 @@
 			roomData[2][1].connect(roomData[2][2], "E");
 			roomData[2][2].connect(roomData[1][2], "N");
 			roomData[1][2].connect(roomData[0][2], "N");
-			var temp = new entity(roomData[0][0].entities, roomData[0][0].collision, [otherArt["art/woodenChest.png"]], 7*SCALE, 7*SCALE, false, false, false, false, SCALE,SCALE);			
-			for (var i = 0; i < 200; i++) {
-			var enemy = new entity(roomData[0][0].entities, roomData[0][0].collision, [otherArt["test.png"]], 3*SCALE, 3*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
-			enemy.addAlgorithm(randMove);
-			enemy.speed = 3;
-			enemy.oncollision((c,o)=>{
-				//if(o.prop["type"] == "wall" || o.prop["type"] == "room") {
-					c.stopMoving();
-					//clearInterval(c.moveToLoop);
-					//c.tp(Math.floor(c.x), Math.floor(c.y));
-					//c.moveToLoop = false;
-				//}
-			});
+				var temp = new entity(roomData[0][0].entities, roomData[0][0].collision, [otherArt["art/woodenChest.png"]], 7*SCALE, 7*SCALE, false, false, false, false, SCALE,SCALE);	
+				temp.hitbox(0.125*SCALE, 0.125*SCALE, 0.75*SCALE, 0.75*SCALE);				
+			var randEnemy = (roomInfo, count)=>{	
+				for (var i = 0; i < count; i++) {
+					var enemy = new entity(roomInfo.entities, roomInfo.collision, [otherArt["test.png"]], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
+					enemy.addAlgorithm(randMove);
+					enemy.prop["type"] = "enemy";
+					enemy.prop["hp"] = 10;
+					enemy.speed = 2;
+					enemy.hitbox(true);
+					enemy.oncollision((c,o)=>{
+						if(o.prop["type"] == "wall" || o.prop["type"] == "room") {
+							c.stopMoving();
+						}
+					});
+					enemy.oncollision((c,o,i)=>{return (o.prop["type"] === "enemy") ? i.old : false;});
+				}
 			}
+			var simpleEnemy = (roomInfo, count)=>{	
+				for (var i = 0; i < count; i++) {
+					var enemy = new entity(roomInfo.entities, roomInfo.collision, [otherArt["test.png"]], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
+					enemy.addAlgorithm(simpleTarget);
+					enemy.prop["type"] = "enemy";
+					enemy.prop["hp"] = 10;
+
+					enemy.speed = 2;
+					enemy.hitbox(true);
+					enemy.oncollision((c,o)=>{
+						if(o.prop["type"] == "wall" || o.prop["type"] == "room") {
+							c.stopMoving();
+						}
+						});
+				}
+			}
+			// When player is out, it tps the player.
+			simpleEnemy(roomData[0][0], 1);
+			simpleEnemy(roomData[2][2], 1);
+			simpleEnemy(roomData[1][2], 1);
+			randEnemy(roomData[0][1], 3);
+			randEnemy(roomData[1][0], 3);
+			randEnemy(roomData[2][1], 3);
 		}
+
 		level1();
 	</script>
 	<script>
