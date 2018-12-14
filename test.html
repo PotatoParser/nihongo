@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html>
+<html draggable="false">
 <body style="overflow: hidden; margin: none; border: none; outline: none">
 	<style>
 	canvas{
@@ -20,12 +20,29 @@
 		color: white;
 	}*/
 	.slot{
-		outline: 1px dotted white;
+		/*outline: 1px dotted white;*/
+		border-radius: 5px;
+		border: 2px solid white;
 		position: absolute;
 	}
 	.inventory{
-		outline: 5px dashed white;
+		/*outline: 5px dashed white;*/
+		border-radius: 10px;
+		border: 4px solid white;
 		position:fixed;
+	}
+	.slot:hover{
+		background-color: rgba(255,255,255,0.3);
+	}
+	div{
+		user-select: none;
+	}
+	img{
+		user-select: none;
+	}
+	.item{
+		pointer-events: none;
+		user-select: none;
 	}
 </style>
 <div id="FPS">0</div>
@@ -58,6 +75,7 @@
 			for (var i = 0; i < arrImages.length; i++) {
 				var other = new Image();
 				other.src = arrImages[i];
+				other.draggable = false;
 				await new Promise((resolve)=>{
 					other.onload = ()=>{
 						resolve();
@@ -362,7 +380,7 @@
 				//var tempY = this.hit.offY || (this.y+(yOffset || 0));				
 				var tempWidth = (typeof widthT == 'number') ? widthT : this.hit.offWidth;
 				var tempHeight = (typeof heightT == 'number') ? heightT : this.hit.offHeight;
-				console.log(tempX, tempY, tempWidth, tempHeight);
+				//console.log(tempX, tempY, tempWidth, tempHeight);
 				this.addCollision(tempX, tempY, tempWidth, "x");
 				this.addCollision(tempX, tempY, tempHeight, "y");
 				this.addCollision(tempX, tempY+tempHeight, tempWidth, "x");
@@ -531,7 +549,75 @@
 				});
 			}
 		}
-		class cursorClick {
+		class cursor {
+			constructor(whenDown, whenMove, whenUp, allProp){
+				for (var key in allProp) {
+					this[key] = allProp[key];
+				}
+				this.ondown = false;
+				this.onmove = false;
+				this.onup = false;
+				if (typeof whenDown === 'function') this.ondown = (e)=>whenDown(e,this);
+				if (typeof whenMove === 'function') this.onmove = (e)=>whenMove(e,this);	
+				if (typeof whenUp === 'function') this.onup = (e)=>whenUp(e,this);					
+			}
+			load(){
+				this.ondown ? document.addEventListener("mousedown", this.ondown) : null;
+				this.onmove ? document.addEventListener("mousemove", this.onmove) : null;				
+				this.onup ? document.addEventListener("mouseup", this.onup) : null;
+			}
+			destroy(){
+				this.ondown ? document.removeEventListener("mousedown", this.ondown) : null;
+				this.onmove ? document.removeEventListener("mousemove", this.onmove) : null;				
+				this.onup ? document.removeEventListener("mouseup", this.onup): null;				
+				delete this;
+			}
+		}
+		class cursorClick extends cursor{
+			constructor(button, repetition, whenDown, whenUp, objectRef) {
+				if (typeof whenUp !== 'function') whenUp = ()=>{};
+				if (typeof whenDown !== 'function') whenDown = ()=>{};				
+				switch(button) {
+					case "left": button = 0; break;
+					case "right": button = 2; break;
+					default: break;
+				}
+				super();
+				this.button = button;
+				this.time = repetition;
+				this.clicking = false;
+				this.mouse = {
+					x: 0,
+					y: 0,
+				}
+				this.ondown = (e, targetObj)=>{
+					if (e.button !== this.button) return;
+					this.mouse.x = e.clientX;
+					this.mouse.y = e.clientY;
+					if (!this.clicking) {
+						this.clicking = true;
+						whenDown(this.mouse, objectRef);
+						if (repetition !== 0) this.clicking = setInterval(()=>whenDown(this.mouse, objectRef), repetition);
+					}
+				};
+				this.onmove = (e)=>{
+					this.mouse.x = e.clientX;
+					this.mouse.y = e.clientY;
+				};
+				this.onup = (e, targetObj)=>{
+					if (e.button !== this.button) return;
+					this.mouse.x = e.clientX;
+					this.mouse.y = e.clientY;										
+					if (this.clicking) {
+						whenUp(this.mouse, objectRef);
+						if (repetition !== 0) clearInterval(this.clicking);
+						this.clicking = false;
+					}
+				};
+				this.load();
+			}
+		}
+		/*class cursorClick {
 			constructor(button, repetition, whenDown, whenUp, objectRef) {
 				if (typeof whenUp !== 'function') whenUp = ()=>{};
 				if (typeof whenDown !== 'function') whenDown = ()=>{};				
@@ -585,6 +671,7 @@
 			}
 
 		}
+		*/
 		var box = new collisionEntity(ENTITY, COLLISION, 0,0, 15*48, 15*48);
 		const testData = [["444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444","444444"],["444444",255,255,255,255,255,255,255,255,255,255,255,255,255,"444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","ffffff","444444"],["444444","444444","ffffff","444444","444444","444444","444444","ffffff","444444","444444","444444","444444","444444","444444","444444"],[255,255,255,255,255,255,255,"ffffff",255,255,255,255,255,255,255]];
 		const collisionTest = {"444444": "wall", 255: "wall"};		
@@ -1079,15 +1166,70 @@
 				this.inv.style.left = x + "px";
 				document.body.appendChild(this.inv);
 				var remainder = (width - squareWidth*4)/5;
+				var id = 0;
 				for (var i = 0; i < 4; i++) {
 					for (var j = 0; j < 4; j++) {
-						this.inv.appendChild(this.genInv(i*squareWidth+(i+1)*remainder, j*squareWidth+(j+1)*remainder, squareWidth));
+						id++;
+						this.items[i][j] = {
+							element: this.genInv(j*squareWidth+(j+1)*remainder-2, i*squareWidth+(i+1)*remainder-2, squareWidth, id),
+							item: null,
+						};
+						this.inv.appendChild(this.items[i][j].element);
 					}
 				}
+				this.press = false;
+				this.drag = false;
+				//button, repetition, whenDown, whenUp, objectRef
+				this.cursor = {
+					press: new cursor((e, i)=>{
+						if (i.down) return; 
+						i.down = true; 
+						console.log(e);
+					}, (e, i)=>{
+						if (!i.down) return;
+						i.x = e.clientX-32; i.y = e.clientY-32;
+						//var temp = e.path[2];
+						if (!i.img) {
+							if ((e.path[1]).classList.contains("slot")) i.img = e.srcElement;
+						}
+						else {
+							i.img.style.pointerEvents = "none";
+							i.img.style.position = "fixed";
+							i.img.style.top = i.y + "px";
+							i.img.style.left = i.x + "px";
+						}
+					}, (e, i)=>{
+						if (i.down) i.down = false;
+						if (i.img) {
+							i.img.style.top = "initial";
+							i.img.style.left = "initial";
+							i.img.style.position = "absolute";
+							if (e.srcElement.classList.contains("slot")) {
+								i.img.remove();	
+								e.srcElement.appendChild(i.img);
+							}
+							i.img = null
+						}
+					}, {
+						x: null, 
+						y: null, 
+						down: false,
+						img: null,
+						attach: null,
+					})
+				}
+				this.cursor.press.load();
+				console.log(this.cursor.press);
+				//this.cursor.press.ondown = (e, obj)=>{console.log(e)}
+				/*for (var i = 0; i < 4; i++) {
+					this.items[i][j] = this.genInv(remainder-2, j*squareWidth+(j+1)*remainder-2, squareWidth);
+					this.inv.appendChild(this.items[0][i]);
+				}*/
 			}
-			genInv(x,y,width){
+			genInv(x,y,width,id){
 				var temp = document.createElement("DIV");
 				temp.classList.add("slot");
+				temp.id = id;
 				temp.style.width = width + "px";
 				temp.style.height = width + "px";
 				temp.style.top = y + "px";
@@ -1098,17 +1240,31 @@
 				return [this.items[0], this.items[1], this.items[2], this.items[3]];
 			}
 			getSlot(index) {
-				var row = Math.ceil(index/4);
-				return this.items[row][3-index%4];
+				var row = Math.floor((index-1)/4);
+				return this.items[row][(index-1)%4];
 
 			}
-			setItem(slot, info) {
-				this.items[slot] = info;
+			setItem(slot, item) {
+				this.getSlot(slot).item = item;
+				this.getSlot(slot).element.appendChild(item.img);
 			}
 		}
-		var INVENTORY = new inventory(10, 6.25*SCALE, (window.innerWidth-15*SCALE)/2-20, 70);
+		var INVENTORY = new inventory(5, 6.25*SCALE, (window.innerWidth-15*SCALE)/2-20, 70);
+		class item {
+			constructor(image, properties){
+				this.img = image;
+				this.active = false;
+				this.passive = null;
+				this.img.classList.add("item");
+				for (var key in properties) {
+					this[key] = properties[key];
+				}
+			}
 
+		}
 		async function level1(){
+			var staffData = await loadImages(["staff.png"]);
+			INVENTORY.setItem(16, new item(staffData["staff.png"]));
 			var allRooms = [["SE", "WS", "S"],
 							["NE", "NWS", "NS"],
 							[null, "NE", "NW"]];
