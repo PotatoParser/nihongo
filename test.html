@@ -1179,14 +1179,16 @@
 				}
 				this.press = false;
 				this.drag = false;
+				this.target = false;
+				this.hover = false;
 				//button, repetition, whenDown, whenUp, objectRef
 				this.cursor = {
 					press: new cursor((e, i)=>{
-						if (i.down) return; 
+						/*if (i.down) return; 
 						i.down = true; 
-						console.log(e);
+						console.log(e);*/
 					}, (e, i)=>{
-						if (!i.down) return;
+						/*if (!i.down) return;
 						i.x = e.clientX-32; i.y = e.clientY-32;
 						//var temp = e.path[2];
 						if (!i.img) {
@@ -1197,9 +1199,46 @@
 							i.img.style.position = "fixed";
 							i.img.style.top = i.y + "px";
 							i.img.style.left = i.x + "px";
-						}
+						}*/
+						if (!this.target) return;
+						if (this.getSlot(this.target).item == null) return;
+						console.log(this.getSlot(this.target));
+						var image = this.getSlot(this.target).item.img;
+						i.x = e.clientX-32; i.y = e.clientY-32;
+						image.style.position = "fixed";
+						image.style.top = i.y + "px";
+						image.style.left = i.x + "px";
 					}, (e, i)=>{
-						if (i.down) i.down = false;
+						console.log(this.target, this.hover);
+						if (!this.target) return;
+						if (this.hover) return;
+						if (this.getSlot(this.target).item == null) return;	
+						console.log("UP");	
+						var image = this.getSlot(this.target).item.img;
+						image.style.top = "initial";
+						image.style.left = "initial";
+						image.style.position = "absolute";
+						/*if (this.hover && this.hover !== this.target) {
+							var switcher = null;
+							if (this.getSlot(this.hover).item !== null) {
+								switcher = this.getSlot(this.hover).item;
+								switcher.remove();	
+								this.getSlot(this.id).element.appendChild(switcher);
+							}
+							image.remove();
+							this.getSlot(this.hover).element.appendChild(image);
+							if (switcher) {
+								this.getSlot(this.hover).item = image;
+								this.getSlot(this.id).item = switcher;
+							} else {
+								this.getSlot(this.hover).item = image;
+								this.getSlot(this.id).item = null;
+							}
+						}	
+						i.lock = false;*/
+						this.target = false;											
+
+											/*if (i.down) i.down = false;
 						if (i.img) {
 							i.img.style.top = "initial";
 							i.img.style.left = "initial";
@@ -1209,13 +1248,10 @@
 								e.srcElement.appendChild(i.img);
 							}
 							i.img = null
-						}
+						}*/
 					}, {
 						x: null, 
-						y: null, 
-						down: false,
-						img: null,
-						attach: null,
+						y: null
 					})
 				}
 				this.cursor.press.load();
@@ -1234,6 +1270,48 @@
 				temp.style.height = width + "px";
 				temp.style.top = y + "px";
 				temp.style.left = x + "px";
+				temp.addEventListener("mousedown", ()=>{
+					if (!this.target) this.target = id;
+					console.log(id);
+				});
+				/*temp.addEventListener("mouseover", ()=>{
+					this.hover = id;
+				});*/
+				temp.addEventListener("mouseup", ()=>{
+					this.hover = id;
+					if (!this.target) return;
+					if (this.getSlot(this.target).item == null) {
+						this.target = false;
+						this.hover = false;
+						return;	
+					}
+					console.log("UP");	
+					console.log((this.getSlot(this.target)).item);
+					var firstItem = (this.getSlot(this.target)).item;
+					var image = (this.getSlot(this.target)).item.img;
+					image.style.top = "initial";
+					image.style.left = "initial";
+					image.style.position = "absolute";
+					if (this.hover && this.hover !== this.target) {
+						var switcher = null;
+						if (this.getSlot(this.hover).item !== null) {
+							switcher = this.getSlot(this.hover).item;
+							switcher.img.remove();	
+							this.getSlot(this.target).element.appendChild(switcher.img);
+						}
+						image.remove();
+						this.getSlot(this.hover).element.appendChild(image);
+						if (switcher) {
+							this.getSlot(this.hover).item = firstItem;
+							this.getSlot(this.target).item = switcher;
+						} else {
+							this.getSlot(this.hover).item = firstItem;
+							this.getSlot(this.target).item = null;
+						}
+					}	
+					this.target = false;	
+					this.hover = false;
+				});
 				return temp;				
 			}
 			getSelected(){
@@ -1249,7 +1327,7 @@
 				this.getSlot(slot).element.appendChild(item.img);
 			}
 		}
-		var INVENTORY = new inventory(5, 6.25*SCALE, (window.innerWidth-15*SCALE)/2-20, 70);
+		var INVENTORY = new inventory(5, 6.25*SCALE, (window.innerWidth-15*SCALE)/2-20, 70/48*SCALE);
 		class item {
 			constructor(image, properties){
 				this.img = image;
@@ -1263,8 +1341,9 @@
 
 		}
 		async function level1(){
-			var staffData = await loadImages(["staff.png"]);
+			var staffData = await loadImages(["staff.png", "randoRing.png"]);
 			INVENTORY.setItem(16, new item(staffData["staff.png"]));
+			INVENTORY.setItem(1, new item(staffData["randoRing.png"]));
 			var allRooms = [["SE", "WS", "S"],
 							["NE", "NWS", "NS"],
 							[null, "NE", "NW"]];
