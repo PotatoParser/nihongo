@@ -2,6 +2,10 @@
 <html draggable="false">
 <body style="overflow: hidden; margin: none; border: none; outline: none">
 	<style>
+	@font-face{
+		font-family: "Libel Suit";
+		src: url("fonts/libel-suit-rg.ttf");
+	}
 	canvas{
 		outline: 5px solid black;
 		user-select: none;
@@ -36,6 +40,10 @@
 	}
 	div{
 		user-select: none;
+		font-family: "Libel Suit", serif; 
+		font-weight: 100;
+		font-style: normal;
+		font-variant: normal;		
 	}
 	img{
 		user-select: none;
@@ -43,6 +51,24 @@
 	.item{
 		pointer-events: none;
 		user-select: none;
+	}
+	.status {
+		position: fixed;
+		outline: none;
+	}
+	.statusText {
+		position: absolute;
+		top: 0px;
+		height: 100%;
+		width: 100%;
+		font-size: 26px;
+		text-align: center;
+		margin: auto;
+		outline: none;
+		pointer-events: none;
+		user-select: none;
+		border: none;
+		color: white;
 	}
 </style>
 <div id="FPS">0</div>
@@ -65,8 +91,58 @@
 				ctx: temp.getContext("2d"),
 			}
 		}
-		function createEntity(){
-
+		class mfpp{
+			static _dimension(id){
+				var temp = Object.assign(this._size(id), this._position(id));
+				return temp;
+			}			
+			static _position(id, left, top){
+				if (arguments.length === 1) {
+					var temp = {
+						x: id.getBoundingClientRect().x,
+						y: id.getBoundingClientRect().y
+					};
+					return temp;
+				}
+				id.style.left = left +"px";
+				id.style.top = top + "px";
+			}			
+			static position(id, left, top, width, height){
+				if (arguments.length === 2) {
+					top = left.y;
+					height = left.height;
+					width = left.width;
+					left = left.x;
+				}
+				if (arguments.length === 3) {
+					height = top.height;
+					width = top.width;
+					top = left.y;
+					left = left.x;
+				}
+				this._size(id, width, height);
+				this._position(id, left, top);
+			}			
+			static _size(id, width, height, _type, _exception){
+				if (_exception) {
+					var temp = id.getBoundingClientRect();
+					var object = {
+						width: temp.width,
+						height: temp.height,
+					}
+					return object;
+				}
+				if (arguments.length === 1) {
+					var object = {
+						width: id.clientWidth,
+						height: id.clientHeight,
+					}
+					return object;
+				}
+				_type = _type || "px";
+				id.style.height = height + _type;
+				id.style.width = width + _type;
+			}
 		}
 	</script>
 	<script>
@@ -1184,22 +1260,7 @@
 				//button, repetition, whenDown, whenUp, objectRef
 				this.cursor = {
 					press: new cursor((e, i)=>{
-						/*if (i.down) return; 
-						i.down = true; 
-						console.log(e);*/
 					}, (e, i)=>{
-						/*if (!i.down) return;
-						i.x = e.clientX-32; i.y = e.clientY-32;
-						//var temp = e.path[2];
-						if (!i.img) {
-							if ((e.path[1]).classList.contains("slot")) i.img = e.srcElement;
-						}
-						else {
-							i.img.style.pointerEvents = "none";
-							i.img.style.position = "fixed";
-							i.img.style.top = i.y + "px";
-							i.img.style.left = i.x + "px";
-						}*/
 						if (!this.target) return;
 						if (this.getSlot(this.target).item == null) return;
 						console.log(this.getSlot(this.target));
@@ -1218,37 +1279,7 @@
 						image.style.top = "initial";
 						image.style.left = "initial";
 						image.style.position = "absolute";
-						/*if (this.hover && this.hover !== this.target) {
-							var switcher = null;
-							if (this.getSlot(this.hover).item !== null) {
-								switcher = this.getSlot(this.hover).item;
-								switcher.remove();	
-								this.getSlot(this.id).element.appendChild(switcher);
-							}
-							image.remove();
-							this.getSlot(this.hover).element.appendChild(image);
-							if (switcher) {
-								this.getSlot(this.hover).item = image;
-								this.getSlot(this.id).item = switcher;
-							} else {
-								this.getSlot(this.hover).item = image;
-								this.getSlot(this.id).item = null;
-							}
-						}	
-						i.lock = false;*/
 						this.target = false;											
-
-											/*if (i.down) i.down = false;
-						if (i.img) {
-							i.img.style.top = "initial";
-							i.img.style.left = "initial";
-							i.img.style.position = "absolute";
-							if (e.srcElement.classList.contains("slot")) {
-								i.img.remove();	
-								e.srcElement.appendChild(i.img);
-							}
-							i.img = null
-						}*/
 					}, {
 						x: null, 
 						y: null
@@ -1256,11 +1287,6 @@
 				}
 				this.cursor.press.load();
 				console.log(this.cursor.press);
-				//this.cursor.press.ondown = (e, obj)=>{console.log(e)}
-				/*for (var i = 0; i < 4; i++) {
-					this.items[i][j] = this.genInv(remainder-2, j*squareWidth+(j+1)*remainder-2, squareWidth);
-					this.inv.appendChild(this.items[0][i]);
-				}*/
 			}
 			genInv(x,y,width,id){
 				var temp = document.createElement("DIV");
@@ -1271,6 +1297,7 @@
 				temp.style.top = y + "px";
 				temp.style.left = x + "px";
 				temp.addEventListener("mousedown", ()=>{
+					if (this.getSlot(id).item === null) return;
 					if (!this.target) this.target = id;
 					console.log(id);
 				});
@@ -1320,14 +1347,72 @@
 			getSlot(index) {
 				var row = Math.floor((index-1)/4);
 				return this.items[row][(index-1)%4];
-
 			}
 			setItem(slot, item) {
 				this.getSlot(slot).item = item;
 				this.getSlot(slot).element.appendChild(item.img);
 			}
+			addItem(item) {
+				for (var i = 1; i <= 16; i++) {
+					if(this.getSlot(i).item === null) {
+						this.setItem(i, item);
+						return;
+					}
+				}
+			}
 		}
-		var INVENTORY = new inventory(5, 6.25*SCALE, (window.innerWidth-15*SCALE)/2-20, 70/48*SCALE);
+		var INVENTORY = new inventory(5, 6.25*SCALE, (window.innerWidth-15*SCALE)/2-20, ((window.innerWidth-15*SCALE)/2-20)/8*1.5);
+		class statusBar {
+			constructor(x, y, width, height, defaultColor, currentValue, maxValue){
+				this.prop = {
+					x: x,
+					y: y,
+					width: width,
+					height: height
+				}
+				this.element = document.createElement("DIV");
+				this.element.classList.add("status");
+				mfpp.position(this.element, this.prop);
+				this.element.style.backgroundColor = defaultColor;
+				document.body.appendChild(this.element);
+				this.data = document.createElement("DIV");
+				this.element.classList.add("statusText");
+				mfpp.position(this.data, 0, 0, this.prop.width, this.prop.height);
+				this.currentValue = currentValue;
+				this.maxValue = maxValue;
+				this.data.innerHTML = `${this.currentValue}/${this.maxValue}`;
+				this.element.appendChild(this.data);
+			}
+			update(value){
+				this.currentValue = value;				
+				var percent = Math.min(value/this.maxValue, 1);
+				this.element.style.width = this.prop.width*percent + "px";
+				this.data.innerHTML = `${this.currentValue}/${this.maxValue}`;				
+			}
+			updateMax(value){
+				this.maxValue = value;
+				var percent = Math.min(this.currentValue/value, 1);
+				this.element.style.width = this.prop.width*percent + "px";				
+				this.data.innerHTML = `${this.currentValue}/${this.maxValue}`;
+			}
+			change(value){
+				this.currentValue += value;
+				this.update(this.currentValue);
+			}
+			changeMax(value){
+				this.maxValue += value;
+				this.update(this.maxValue);
+			}
+			getValue(){
+				return this.currentValue;
+			}
+			getMax(){
+				return this.maxValue;
+			}
+		}
+		var HP = new statusBar(5, 200, (window.innerWidth-15*SCALE)/2-20, 30, "red", 100, 100);
+		var MP = new statusBar(5, 250, (window.innerWidth-15*SCALE)/2-20, 30, "blue", 100, 100);
+		MP.change(-50);	
 		class item {
 			constructor(image, properties){
 				this.img = image;
@@ -1342,8 +1427,8 @@
 		}
 		async function level1(){
 			var staffData = await loadImages(["staff.png", "randoRing.png"]);
-			INVENTORY.setItem(16, new item(staffData["staff.png"]));
-			INVENTORY.setItem(1, new item(staffData["randoRing.png"]));
+			INVENTORY.addItem(new item(staffData["staff.png"]));
+			INVENTORY.addItem(new item(staffData["randoRing.png"]));
 			var allRooms = [["SE", "WS", "S"],
 							["NE", "NWS", "NS"],
 							[null, "NE", "NW"]];
@@ -1391,8 +1476,10 @@
 					enemy.oncollision((c,o)=>{
 						if(o.prop["type"] == "wall" || o.prop["type"] == "room") {
 							c.stopMoving();
+						} else if (o.prop["type"] == "player") {
+							HP.change(-1);
 						}
-						});
+					});
 				}
 			}
 			// When player is out, it tps the player.
