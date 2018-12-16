@@ -1442,6 +1442,26 @@
 				}
 			}
 		}
+		function linkLevels(roomNames, roomData) {
+			for (var i = 0; i < roomNames.length; i++) {
+				for (var j = 0; j < roomNames[i].length; j++) {
+					var name = roomNames[i][j];
+					if (name == null || name == "None") continue;
+					if (name.indexOf("N") != -1) {
+						roomData[i][j].connect(roomData[i-1][j], "N");
+					}
+					if (name.indexOf("W") != -1) {
+						roomData[i][j].connect(roomData[i][j-1], "W");
+					}
+					if (name.indexOf("S") != -1) {
+						roomData[i][j].connect(roomData[i+1][j], "S");
+					}
+					if (name.indexOf("E") != -1) {
+						roomData[i][j].connect(roomData[i][j+1], "E");
+					}
+				}
+			}
+		}
 		async function level1(){
 			var allRooms = [["SE", "WS", "S"],
 							["NE", "NWS", "NS"],
@@ -1452,7 +1472,7 @@
 			roomData[0][0].load();
 			COLLISION = roomData[0][0].collision;
 			ENTITY = roomData[0][0].entities;
-			roomData[0][0].connect(roomData[1][0], "S");
+			/*roomData[0][0].connect(roomData[1][0], "S");
 			roomData[0][0].connect(roomData[0][1], "E");
 			roomData[0][1].connect(roomData[1][1], "S");
 			roomData[1][0].connect(roomData[1][1], "E");
@@ -1460,6 +1480,8 @@
 			roomData[2][1].connect(roomData[2][2], "E");
 			roomData[2][2].connect(roomData[1][2], "N");
 			roomData[1][2].connect(roomData[0][2], "N");
+			*/
+			linkLevels(allRooms, roomData);
 				var temp = new entity(roomData[0][0].entities, roomData[0][0].collision, [otherArt["art/woodenChest.png"]], 7*SCALE, 7*SCALE, false, false, false, false, SCALE,SCALE);	
 				temp.prop.type = "chest";
 				temp.hitbox(0.125*SCALE, 0.125*SCALE, 0.75*SCALE, 0.75*SCALE);	
@@ -1510,7 +1532,7 @@
 			randEnemy(roomData[2][1], 3);
 		}
 
-		level1();
+		//level1();
 	</script>
 	<script>
 		async function level2(){
@@ -1519,7 +1541,8 @@
 							["E","NWSE","W"],
 							[null,"N",null]];
 			var roomData = await levelGen(allRooms, "lvl2");
-			roomData[0][0].connect(roomData[0][1], "E");
+			linkLevels(allRooms, roomData);			
+			/*roomData[0][0].connect(roomData[0][1], "E");
 			roomData[0][1].connect(roomData[0][2], "E");
 			roomData[1][0].connect(roomData[1][1], "E");
 			roomData[1][1].connect(roomData[1][2], "E");
@@ -1527,7 +1550,7 @@
 			roomData[2][1].connect(roomData[2][2], "E");
 			roomData[1][2].connect(roomData[0][2], "N");
 			roomData[1][1].connect(roomData[2][1], "S");
-			roomData[2][1].connect(roomData[3][1], "S");
+			roomData[2][1].connect(roomData[3][1], "S");*/
 			roomData[2][1].load();
 			COLLISION = roomData[2][1].collision;
 			ENTITY = roomData[2][1].entities;
@@ -1540,9 +1563,11 @@
 			var allRooms = [["None"]];
 			var roomData = await levelGen(allRooms, "lvl3");
 			console.log(roomData);
+			linkLevels(allRooms, roomData);			
 			roomData[0][0].load();
 			COLLISION = roomData[0][0].collision;
 			ENTITY = roomData[0][0].entities;
+
 		}
 		//level3();
 	</script>
@@ -1553,19 +1578,110 @@
 							["E","NWSE","W"],
 							[null,"N",null]];
 			var roomData = await levelGen(allRooms, "lvl4");
-			roomData[0][0].connect(roomData[1][0], "S");
+			/*roomData[0][0].connect(roomData[1][0], "S");
 			roomData[0][1].connect(roomData[1][1], "S");
 			roomData[1][0].connect(roomData[1][1], "E");
 			roomData[1][1].connect(roomData[1][2], "E");
 			roomData[2][0].connect(roomData[2][1], "E");
 			roomData[2][1].connect(roomData[2][2], "E");
 			roomData[1][1].connect(roomData[2][1], "S");
-			roomData[2][1].connect(roomData[3][1], "S");
+			roomData[2][1].connect(roomData[3][1], "S");*/
+			linkLevels(allRooms, roomData);
 			roomData[3][1].load();
 			COLLISION = roomData[3][1].collision;
 			ENTITY = roomData[3][1].entities;					
 		}
-		//level4();
+		level4();
+	</script>
+	<script>
+		async function level5(){
+			var allRooms = [["None"]];
+			var roomData = await levelGen(allRooms, "lvl5");
+			linkLevels(allRooms, roomData);
+		}
+		//level5();
+
+		// TODO
+		async function level6(){
+			var allRooms = [["", "", ""],
+							["", "", ""],
+							["", "", ""]];
+			var roomData = await levelGen(allRooms, "lvl6");
+			linkLevels(allRooms, roomData);
+		}
+		//level6();
+		async function level7(){
+			var allRooms = [["SE", "WSE", "WS"],
+							["NS", "N", "NS"],
+							["N", null, "N"]];			
+			var roomData = await levelGen(allRooms, "lvl7");
+			linkLevels(allRooms, roomData);
+		}
+		//level7();
+		async function level8(){
+			var allRooms = [["SE", "WE", "W"],
+							["NS", "E", "WS"],
+							["NE", "WE", "NW"]];
+			var roomData = await levelGen(allRooms, "lvl8");
+			linkLevels(allRooms, roomData);
+		}
+		//level8();	
+		async function level9(){
+			var allRooms = [["SE", "W"],
+							["NS", null],
+							["NE", "WS"],
+							[null, "NS"],
+							["E", "NW"]];
+			var roomData = await levelGen(allRooms, "lvl9");
+			linkLevels(allRooms, roomData);
+		}
+		//level9();
+		async function level10(){
+			var allRooms = [["None"]];
+			var roomData = await levelGen(allRooms, "lvl10");
+			linkLevels(allRooms, roomData);
+		}
+		//level10();
+		async function level11(){
+			var allRooms = [["SE", "WSE", "WS"],
+							["NS", "NS", "NS"],
+							["NE", "NWE", "NW"]];
+			var roomData = await levelGen(allRooms, "lvl11");
+			linkLevels(allRooms, roomData);
+		}
+		//level11();
+		async function level12(){
+			var allRooms = [["E", "WSE", "W"],
+							["SE", "NW", "S"],
+							["NE", "WE", "NW"]];
+			var roomData = await levelGen(allRooms, "lvl12");
+			linkLevels(allRooms, roomData);
+		}
+		//level12();	
+		async function level13(){
+			var allRooms = [[null, "S", null, null],
+							[null, "NSE", "WS", null],
+							["E", "NWS", "N", null],
+							[null, "NSE", "WE", "W"],
+							[null, "N", null, null]];
+			var roomData = await levelGen(allRooms, "lvl13");
+			linkLevels(allRooms, roomData);
+		}
+		//level13();
+		async function level14(){
+			var allRooms = [[null, "S", null],
+							["E", "NWSE", "W"],
+							[null, "N", null]];
+			var roomData = await levelGen(allRooms, "lvl14");
+			linkLevels(allRooms, roomData);
+		}
+		//level14();
+		async function level15(){
+			var allRooms = [["None"]];
+			var roomData = await levelGen(allRooms, "lvl5");
+			linkLevels(allRooms, roomData);
+		}
+		//level15();					
 	</script>
 </body>
 </html>
