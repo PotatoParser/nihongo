@@ -156,11 +156,18 @@
 	<script>
 		var ENTITY = {};
 		var COLLISION = {};
+		var IMAGES = {};
+		var MAINPLAYER = false;		
+		var LEVEL = 1;
+		var GOLD = 0;
 		var SCALE = Math.floor(window.innerHeight/15);
 		var INVENTORY = new inventory(5, 6.25*SCALE, (window.innerWidth-15*SCALE)/2-20, ((window.innerWidth-15*SCALE)/2-20)/8*1.5);
 		var HP = new statusBar(5/48*SCALE, 200/48*SCALE, (window.innerWidth-15*SCALE)/2-20, 30/48*SCALE, "red", 100, 100);
 		var MP = new statusBar(5/48*SCALE, 250/48*SCALE, (window.innerWidth-15*SCALE)/2-20, 30/48*SCALE, "blue", 100, 100);		
 		var box = new collisionEntity(ENTITY, COLLISION, 0,0, 15*48, 15*48);
+		var canvas = new layer((window.innerWidth-15*SCALE)/2, 1, 15*SCALE, 15*SCALE, false, 0);
+		canvas.show();
+		canvas.element.style["z-index"] = 0;			
 		const collisionTest = {"444444": "wall", 255: "wall"};		
 		var fps = document.getElementById("FPS");
 		function testLoop(func, time){
@@ -197,9 +204,6 @@
 			}
 		}
 			//var canvas = canvasGen();
-	var canvas = new layer((window.innerWidth-15*SCALE)/2, 1, 15*SCALE, 15*SCALE, false, 0);
-	canvas.show();
-	canvas.element.style["z-index"] = 0;	
 		testLoop(()=>{requestAnimationFrame(update);}, 0);
 		//start();
 	</script>
@@ -208,174 +212,6 @@
 	<script src="levels.js"></script>
 	<script>
 		level1();
-	</script>
-	<script>
-		async function level2(){
-			var allRooms = [["E","WE","WS"],
-							["E","WSE","NW"],
-							["E","NWSE","W"],
-							[null,"N",null]];
-			var roomData = await levelGen(allRooms, "lvl2");
-			linkLevels(allRooms, roomData);			
-			/*roomData[0][0].connect(roomData[0][1], "E");
-			roomData[0][1].connect(roomData[0][2], "E");
-			roomData[1][0].connect(roomData[1][1], "E");
-			roomData[1][1].connect(roomData[1][2], "E");
-			roomData[2][0].connect(roomData[2][1], "E");
-			roomData[2][1].connect(roomData[2][2], "E");
-			roomData[1][2].connect(roomData[0][2], "N");
-			roomData[1][1].connect(roomData[2][1], "S");
-			roomData[2][1].connect(roomData[3][1], "S");*/
-			roomData[2][1].load();
-			COLLISION = roomData[2][1].collision;
-			ENTITY = roomData[2][1].entities;
-		}
-
-		//level2();
-	</script>
-	<script>
-		async function level3(){
-			var allRooms = [["None"]];
-			var roomData = await levelGen(allRooms, "lvl3");
-			console.log(roomData);
-			linkLevels(allRooms, roomData);			
-			roomData[0][0].load();
-			COLLISION = roomData[0][0].collision;
-			ENTITY = roomData[0][0].entities;
-
-		}
-		//level3();
-	</script>
-	<script>
-		async function level4(){
-			var allRooms = [["S","S",null],
-							["NE","NWSE","W"],
-							["E","NWSE","W"],
-							[null,"N",null]];
-			var roomData = await levelGen(allRooms, "lvl4");
-			/*roomData[0][0].connect(roomData[1][0], "S");
-			roomData[0][1].connect(roomData[1][1], "S");
-			roomData[1][0].connect(roomData[1][1], "E");
-			roomData[1][1].connect(roomData[1][2], "E");
-			roomData[2][0].connect(roomData[2][1], "E");
-			roomData[2][1].connect(roomData[2][2], "E");
-			roomData[1][1].connect(roomData[2][1], "S");
-			roomData[2][1].connect(roomData[3][1], "S");*/
-			linkLevels(allRooms, roomData);
-			roomData[3][1].load();
-			COLLISION = roomData[3][1].collision;
-			ENTITY = roomData[3][1].entities;					
-		}
-		//level4();
-	</script>
-	<script>
-		async function level5(){
-			var allRooms = [["None"]];
-			var roomData = await levelGen(allRooms, "lvl5");
-			linkLevels(allRooms, roomData);
-		}
-		//level5();
-
-		// TODO
-		async function level6(){
-			var allRooms = [["", "", ""],
-							["", "", ""],
-							["", "", ""]];
-			var roomData = await levelGen(allRooms, "lvl6");
-			linkLevels(allRooms, roomData);
-		}
-		//level6();
-		async function level7(){
-			var allRooms = [["SE", "WSE", "WS"],
-							["NS", "N", "NS"],
-							["N", null, "N"]];			
-			var roomData = await levelGen(allRooms, "lvl7");
-			linkLevels(allRooms, roomData);
-		}
-		//level7();
-		async function level8(){
-			var allRooms = [["SE", "WE", "W"],
-							["NS", "E", "WS"],
-							["NE", "WE", "NW"]];
-			var roomData = await levelGen(allRooms, "lvl8");
-			linkLevels(allRooms, roomData);
-			roomData[0][2].load();
-			COLLISION = roomData[0][2].collision;
-			ENTITY = roomData[0][2].entities;			
-		}
-		//level8();
-		async function level9(){
-			var allRooms = [["SE", "W"],
-							["NS", null],
-							["NE", "WS"],
-							[null, "NS"],
-							["E", "NW"]];
-			var roomData = await levelGen(allRooms, "lvl9");
-			linkLevels(allRooms, roomData);
-			roomData[2][0].load();
-			COLLISION = roomData[2][0].collision;
-			ENTITY = roomData[2][0].entities;			
-		}
-		//level9();
-		async function level10(){
-			var allRooms = [["None"]];
-			var roomData = await levelGen(allRooms, "lvl10");
-			linkLevels(allRooms, roomData);
-		}
-		//level10();
-		async function level11(){
-			var allRooms = [["SE", "WSE", "WS"],
-							["NS", "NS", "NS"],
-							["NE", "NWE", "NW"]];
-			var roomData = await levelGen(allRooms, "lvl11");
-			linkLevels(allRooms, roomData);
-			roomData[1][2].load();
-			COLLISION = roomData[1][2].collision;
-			ENTITY = roomData[1][2].entities;			
-		}
-		//level11();
-		async function level12(){
-			var allRooms = [["E", "WSE", "W"],
-							["SE", "NW", "S"],
-							["NE", "WE", "NW"]];
-			var roomData = await levelGen(allRooms, "lvl12");
-			linkLevels(allRooms, roomData);
-			roomData[2][1].load();
-			COLLISION = roomData[2][1].collision;
-			ENTITY = roomData[2][1].entities;			
-		}
-		//level12();	
-		async function level13(){
-			var allRooms = [[null, "S", null, null],
-							[null, "NSE", "WS", null],
-							["E", "NWS", "N", null],
-							[null, "NSE", "WE", "W"],
-							[null, "N", null, null]];
-			var roomData = await levelGen(allRooms, "lvl13");
-			linkLevels(allRooms, roomData);
-			roomData[4][1].load();
-			COLLISION = roomData[4][1].collision;
-			ENTITY = roomData[4][1].entities;			
-		}
-		//level13();
-		async function level14(){
-			var allRooms = [[null, "S", null],
-							["E", "NWSE", "W"],
-							[null, "N", null]];
-			var roomData = await levelGen(allRooms, "lvl14");
-			linkLevels(allRooms, roomData);
-			roomData[1][1].load();
-			COLLISION = roomData[1][1].collision;
-			ENTITY = roomData[1][1].entities;				
-		}
-		//level14();
-		async function level15(){
-			var allRooms = [["None"]];
-			var roomData = await levelGen(allRooms, "lvl5");
-			linkLevels(allRooms, roomData);
-
-		}
-		//level15();					
 	</script>
 </body>
 </html>

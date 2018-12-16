@@ -1,7 +1,8 @@
 const PLAYER = async ()=>{
 	var allImages = ["test.png", "testBack.png", "orb.png"];			
-	var playerArt = await loadImages(allImages);
-	var mainPlayer = new player(false, false, [playerArt["test.png"], playerArt["testBack.png"]], 7*SCALE, 5*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
+	//var playerArt = await loadImages(allImages);
+	await globalLoad("test.png", "testBack.png", "orb.png");
+	var mainPlayer = new player(false, false, ["test.png", "testBack.png"], 7*SCALE, 5*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
 	mainPlayer.oncollision((c, o, i)=>{
 		var direction = "";
 		if (i["x"] != undefined) {
@@ -42,7 +43,7 @@ const PLAYER = async ()=>{
 	});
 	mainPlayer.oncollision((c, o, i)=>{
 		if (o.type == "chest") {
-			var other = async ()=>{
+			/*var other = async ()=>{
 				var staffData = await loadImages(["staff.png", "randoRing.png"]);
 				INVENTORY.addItem(new item(staffData["staff.png"], (mouse, playerData, itemData)=>{
 					var temp = new entity(ENTITY, COLLISION, [playerArt["orb.png"]], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
@@ -72,12 +73,15 @@ const PLAYER = async ()=>{
 					//temp.speed = 10;
 					temp.setSpeed(10);
 				}, false, false, 0));
+			}*/
+			var temp = o.storedItems;
+			for (var i = 0; i < temp.length; i++) {
+				INVENTORY.addItem(temp[i]);
 			}
 			o.destroy();				
-			other();
+			//other();
 			return i.old;
 		}
 	});
 	return mainPlayer;
 }
-var MAINPLAYER = false;

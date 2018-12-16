@@ -1,5 +1,7 @@
 var createLayer = async (art, index)=>{
-	return new layer((window.innerWidth-15*SCALE)/2, 1, 15*SCALE, 15*SCALE, (await loadImages([art]))[art], index);
+	await globalLoad(art);
+	//await loadImages([art]))[art]
+	return new layer((window.innerWidth-15*SCALE)/2, 1, 15*SCALE, 15*SCALE, art, index);
 };
 class room {
 	constructor(mapName, level){

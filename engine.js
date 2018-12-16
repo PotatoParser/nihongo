@@ -13,6 +13,20 @@ async function loadImages(arrImages){
 	}
 	return temp;
 }
+async function globalLoad(){
+	for (var i = 0; i < arguments.length; i++) {
+		if (IMAGES[arguments[i]] != undefined) continue;
+		var other = new Image();
+		other.src = arguments[i];
+		other.draggable = false;
+		await new Promise((resolve)=>{
+			other.onload = ()=>{
+				resolve();
+			}
+		});
+		IMAGES[arguments[i]] = other;
+	}
+}
 class wall {
 	constructor(x, y, distance, direction, OBJ){
 		this.x = x;
@@ -54,7 +68,9 @@ class wall {
 class layer {
 	constructor(x, y, width, height, image, index){
 		this.element = document.createElement("CANVAS");
+		//this.img = image || null;
 		this.img = image || null;
+		if (this.img) this.img = IMAGES[image].cloneNode();
 		this.x = x || 0;
 		this.y = y || 0;
 		this.width = width || 100;
@@ -129,11 +145,18 @@ function ERR(actual, calc){
 }
 class entity{
 	constructor(entity, collision, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
+		//this.img = image;
 		this.img = image;
+		if (this.img) {
+			this.img = [];
+			for (var i = 0; i < image.length; i++) {
+				this.img.push(IMAGES[image[i]].cloneNode());	
+			}
+		}
 		this.x = x || 0;
 		this.y = y || 0;
-		this.height = height || image[0].height;
-		this.width = width || image[0].width;			
+		this.height = height || this.img[0].height;
+		this.width = width || this.img[0].width;			
 		this.index = 0;
 		this.speed = 1;
 		this.moveToLoop = false;
@@ -158,8 +181,10 @@ class entity{
 		this.movehit = false;
 		this.hp = 0;
 		this.type = null;
+		this.storedItems = [];
 	}
 	draw(ctx){
+		//console.log(this.img, this, JSON.parse(JSON.stringify(IMAGES)));
 		if (!this.still) ctx.drawImage(this.img[this.index], this.x-this.hit.offX, this.y-this.hit.offY, this.width, this.height);
 	}
 	tp(x,y){
@@ -330,7 +355,13 @@ class entity{
 	}
 	setHP(value){
 		this.hp = value;
-		if (this.hp < 0 && typeof this.death == 'function') death();
+		if (this.hp < 0 && typeof this.death == 'function') {
+			console.log("DEATH");
+			this.death();
+		}
+	}
+	storeItem(item) {
+		this.storedItems.push(item);
 	}
 }	
 class collisionEntity extends entity{
@@ -345,6 +376,11 @@ class enemy extends entity{
 	constructor(entity, collision, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
 		super(entity, collision, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height);
 		this.type = "enemy";
+		this.gold = 1;
+	}
+	death(){
+		GOLD+=this.gold;
+		this.destroy();
 	}
 }
 // offset of 8, hitHeight of 
@@ -677,6 +713,8 @@ class inventory {
 	}
 	setItem(slot, item) {
 		this.getSlot(slot).item = item;
+		item.slot = this;
+		item.slotNum = slot;
 		this.getSlot(slot).element.appendChild(item.img);
 	}
 	addItem(item) {
@@ -686,6 +724,13 @@ class inventory {
 				return;
 			}
 		}
+	}
+	removeItem(slot){
+		var temp = this.getSlot(slot);
+		if (temp.item === null) return;
+		temp.item.deactivate();
+		temp.item.img.remove();
+		temp.item = null;
 	}
 	setCurrent(slot) {
 		if (slot === this.current) return;
@@ -757,7 +802,9 @@ class statusBar {
 }
 class item {
 	constructor(image, active, passive, cooldown, repetition, properties){
-		this.img = image;
+		//this.img = image;
+		this.quantity = 1;
+		this.img = IMAGES[image].cloneNode();
 		this.active = false;
 		this.passive = null;
 		this.on = false;
@@ -774,7 +821,9 @@ class item {
 		for (var key in properties) {
 			this[key] = properties[key];
 		}
-		this.cooldown = cooldown;				
+		this.cooldown = cooldown;	
+		this.slot = 0;			
+		this.slotNum = 0;
 	}
 	deactivate(){
 		if (this.on) {
@@ -782,4 +831,21 @@ class item {
 			this.on = false;
 		}
 	}
+	removeItem(){
+		this.slot.removeItem(this.slotNum);
+	}
 }
+
+/*async function asyncEntity(newEntity, collision, images, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
+	var temp = await loadImages(images);
+	var other = [];
+	for (var key in temp) {
+		other.push(temp[key]);
+	}
+	return new entity(newEntity, collision, other, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height);
+}
+
+async function asyncItem(image, active, passive, cooldown, repetition, properties){
+	var temp = await loadImages([image]);
+	return new item(temp[image], active, passive, cooldown, repetition, properties);
+}*/
