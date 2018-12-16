@@ -314,6 +314,8 @@
 				if (entity) this.ENTITY[this.id] = this;
 				this.alg = [];	
 				this.movehit = false;
+				this.hp = 0;
+				this.type = null;
 			}
 			draw(ctx){
 				if (!this.still) ctx.drawImage(this.img[this.index], this.x-this.hit.offX, this.y-this.hit.offY, this.width, this.height);
@@ -481,6 +483,13 @@
 			setSpeed(value){
 				this.speed = value/48*SCALE;
 			}
+			updateHP(value){
+				this.setHP(this.hp + value);
+			}
+			setHP(value){
+				this.hp = value;
+				if (this.hp < 0 && typeof this.death == 'function') death();
+			}
 		}	
 		class collisionEntity extends entity{
 			constructor(entity, collision, boxX, boxY, boxHeight, boxWidth){
@@ -490,7 +499,12 @@
 				this.img = null;
 			}
 		}
-
+		class enemy extends entity{
+			constructor(entity, collision, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
+				super(entity, collision, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height);
+				this.type = "enemy";
+			}
+		}
 		// offset of 8, hitHeight of 
 		class player extends entity{
 			constructor(entity, collision, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
@@ -500,7 +514,7 @@
 				this.mouseControls = {};
 				this.entity = ENTITY;
 				this.collision = COLLISION;
-				this.prop.type = "player";
+				this.type = "player";
 			}
 			onmove(keyCode, reversed, type ,imageIndex, whenDown, whenUp) {
 				if (typeof whenUp !== 'function') whenUp = ()=>{};
@@ -869,7 +883,7 @@
 				var temp = Date.now();
 				//fps.innerHTML = Math.round(1000/(temp-time));
 				testLoop(func, temp);
-			}, 1000/60);
+			}, 1000/60); // Altered from 1000/60
 			func();
 		}
 		var update = ()=>{
@@ -921,7 +935,7 @@
 						direction = "N";
 					} else direction = "S";
 				}
-				if(o.prop["type"] == "wall" && o.prop["room"] != undefined) o.prop["room"].changeRoom(direction);
+				if(o.type == "wall" && o.prop["room"] != undefined) o.prop["room"].changeRoom(direction);
 			});
 			//mainPlayer.speed = 4;	
 			mainPlayer.setSpeed(4);		
@@ -949,16 +963,16 @@
 				INVENTORY.deactivate(mouse, playerData);
 			});
 			mainPlayer.oncollision((c, o, i)=>{
-				if (o.prop["type"] == "chest") {
+				if (o.type == "chest") {
 					var other = async ()=>{
 						var staffData = await loadImages(["staff.png", "randoRing.png"]);
 						INVENTORY.addItem(new item(staffData["staff.png"], (mouse, playerData, itemData)=>{
 							var temp = new entity(ENTITY, COLLISION, [playerArt["orb.png"]], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
 							temp.oncollision((c, o, i)=>{
-								if(o.prop["type"] == "wall" || o.prop["type"] == "room") c.destroy();
-								else if(o.prop["type"] == "enemy"){
+								if(o.type == "wall" || o.type == "room") c.destroy();
+								else if(o.type == "enemy"){
 									c.destroy();
-									if (o.prop["hp"] > 0) o.prop["hp"]--;
+									if (o.hp > 0) o.hp--;
 									else o.destroy();
 								} else return i.old;
 							});
@@ -969,10 +983,10 @@
 						INVENTORY.addItem(new item(staffData["randoRing.png"], (mouse, playerData, itemData)=>{
 							var temp = new entity(ENTITY, COLLISION, [playerArt["orb.png"]], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
 							temp.oncollision((c, o, i)=>{
-								if(o.prop["type"] == "wall" || o.prop["type"] == "room") c.destroy();
-								else if(o.prop["type"] == "enemy"){
+								if(o.type == "wall" || o.type == "room") c.destroy();
+								else if(o.type == "enemy"){
 									c.destroy();
-									if (o.prop["hp"] > 0) o.prop["hp"]--;
+									if (o.hp > 0) o.hp--;
 									else o.destroy();
 								} else return i.old;
 							});
@@ -1005,9 +1019,10 @@
 				this.S = null;
 				this.E =  null;
 				this.collisionLayer = new collisionEntity(this.entities, this.collision, 0,0,canvas.height, canvas.width);
-				//this.collisionLayer.prop["type"] = "wall";
+				//this.collisionLayer.type = "wall";
 				this.box = new collisionEntity(this.entities, this.collision, 0,0,canvas.height, canvas.width);
-				this.box.prop["type"] = "wall";
+				//this.box.type = "wall";
+				this.box.type = "wall";
 				this.box.prop["room"] = this;
 				this.box.addCollision(0,0,canvas.width, "x");
 				this.box.addCollision(0,0,canvas.height, "y");
@@ -1021,6 +1036,11 @@
 				this.botLayer.show();
 				this.topLayer.show();
 			}
+			start() {
+				this.load();
+				ENTITY = this.entities;
+				COLLISION = this.collision;
+			}
 			unload() {
 				this.botLayer.hide();
 				this.topLayer.hide();
@@ -1030,77 +1050,77 @@
 				this.topLayer = await createLayer(`${this.level}/Map${this.mapName}Top.png`, 10);
 			}
 			readMap(rawData, collisionCheck){
-			for (var i = 0; i < rawData.length; i++) {
-				//var start = false;
-				//var i = 1;
-				this.collisionLayer.prop["type"] = "room";
-				var top = false;
-				var bottom = false;
-				for (var j = 0; j < rawData[i].length; j++) {
-					var target = rawData[i][j];
-					if (collisionCheck[target] != undefined) {
-						if (i != 0 && top === false) 
-							if (collisionCheck[rawData[i-1][j]] == undefined) 
-								top = j;
-						if (i != rawData.length-1 && bottom === false) 
-							if (collisionCheck[rawData[i+1][j]] == undefined) 
-								bottom = j;
-					}
-					if (top !== false) {
-						if (collisionCheck[rawData[i-1][j]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
-							if (j == rawData[i].length-1 && collisionCheck[rawData[i-1][j]] == undefined) {
-								j++;
-							}
-								this.collisionLayer.addCollision(top*SCALE, i*SCALE, (j-top)*SCALE, "x");
-								top = false;
+				for (var i = 0; i < rawData.length; i++) {
+					//var start = false;
+					//var i = 1;
+					this.collisionLayer.type = "room";
+					var top = false;
+					var bottom = false;
+					for (var j = 0; j < rawData[i].length; j++) {
+						var target = rawData[i][j];
+						if (collisionCheck[target] != undefined) {
+							if (i != 0 && top === false) 
+								if (collisionCheck[rawData[i-1][j]] == undefined) 
+									top = j;
+							if (i != rawData.length-1 && bottom === false) 
+								if (collisionCheck[rawData[i+1][j]] == undefined) 
+									bottom = j;
 						}
-					}
-					if (bottom !== false) {
-						if (collisionCheck[rawData[i+1][j]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
-							if (j == rawData[i].length-1 && collisionCheck[rawData[i+1][j]] == undefined) {
-								j++;
+						if (top !== false) {
+							if (collisionCheck[rawData[i-1][j]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
+								if (j == rawData[i].length-1 && collisionCheck[rawData[i-1][j]] == undefined) {
+									j++;
+								}
+									this.collisionLayer.addCollision(top*SCALE, i*SCALE, (j-top)*SCALE, "x");
+									top = false;
 							}
-							this.collisionLayer.addCollision(bottom*SCALE, (i+1)*SCALE, (j-bottom)*SCALE, "x");
-							bottom = false;
+						}
+						if (bottom !== false) {
+							if (collisionCheck[rawData[i+1][j]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
+								if (j == rawData[i].length-1 && collisionCheck[rawData[i+1][j]] == undefined) {
+									j++;
+								}
+								this.collisionLayer.addCollision(bottom*SCALE, (i+1)*SCALE, (j-bottom)*SCALE, "x");
+								bottom = false;
+							}
 						}
 					}
 				}
-			}
-			for (var i = 0; i < rawData.length; i++) {
-				var left = false;
-				var right = false;
+				for (var i = 0; i < rawData.length; i++) {
+					var left = false;
+					var right = false;
 
-				for (var j = 0; j < rawData[i].length; j++) {
-					var target = rawData[j][i];
-					if (collisionCheck[target] != undefined) {
-						if (i != 0 && left === false) 
-							if (collisionCheck[rawData[j][i-1]] == undefined) 
-								left = j;
-						if (i != rawData.length-1 && right === false) 
-							if (collisionCheck[rawData[j][i+1]] == undefined) 
-								right = j;
-					}
-					if (left !== false) {
-						if (collisionCheck[rawData[j][i-1]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
-							if (j == rawData[i].length-1 && collisionCheck[rawData[j][i-1]] == undefined) {
-								j++;
+					for (var j = 0; j < rawData[i].length; j++) {
+						var target = rawData[j][i];
+						if (collisionCheck[target] != undefined) {
+							if (i != 0 && left === false) 
+								if (collisionCheck[rawData[j][i-1]] == undefined) 
+									left = j;
+							if (i != rawData.length-1 && right === false) 
+								if (collisionCheck[rawData[j][i+1]] == undefined) 
+									right = j;
+						}
+						if (left !== false) {
+							if (collisionCheck[rawData[j][i-1]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
+								if (j == rawData[i].length-1 && collisionCheck[rawData[j][i-1]] == undefined) {
+									j++;
+								}
+									this.collisionLayer.addCollision(i*SCALE, left*SCALE, (j-left)*SCALE, "y");
+									left = false;
 							}
-								this.collisionLayer.addCollision(i*SCALE, left*SCALE, (j-left)*SCALE, "y");
-								left = false;
+						}
+						if (right !== false) {
+							if (collisionCheck[rawData[j][i+1]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
+								if (j == rawData[i].length-1 && collisionCheck[rawData[j][i+1]] == undefined) {
+									j++;
+								}
+								this.collisionLayer.addCollision((i+1)*SCALE, right*SCALE, (j-right)*SCALE, "y");
+								right = false;
+							}
 						}
 					}
-					if (right !== false) {
-						if (collisionCheck[rawData[j][i+1]] != undefined || collisionCheck[target] == undefined || j == rawData[i].length-1) {
-							if (j == rawData[i].length-1 && collisionCheck[rawData[j][i+1]] == undefined) {
-								j++;
-							}
-							this.collisionLayer.addCollision((i+1)*SCALE, right*SCALE, (j-right)*SCALE, "y");
-							right = false;
-						}
-					}
-				}
-			}			
-		}
+				}			
+			}
 			connect(otherRoom, side){
 				switch(side) {
 					case "N":
@@ -1469,55 +1489,43 @@
 			var roomData = await levelGen(allRooms, "lvl1");
 			var otherArt = await loadImages(["art/woodenChest.png", "test.png"]);
 			console.log(roomData);
-			roomData[0][0].load();
-			COLLISION = roomData[0][0].collision;
-			ENTITY = roomData[0][0].entities;
-			/*roomData[0][0].connect(roomData[1][0], "S");
-			roomData[0][0].connect(roomData[0][1], "E");
-			roomData[0][1].connect(roomData[1][1], "S");
-			roomData[1][0].connect(roomData[1][1], "E");
-			roomData[1][1].connect(roomData[2][1], "S");
-			roomData[2][1].connect(roomData[2][2], "E");
-			roomData[2][2].connect(roomData[1][2], "N");
-			roomData[1][2].connect(roomData[0][2], "N");
-			*/
+			//roomData[0][0].load();
+			//COLLISION = roomData[0][0].collision;
+			//ENTITY = roomData[0][0].entities;
 			linkLevels(allRooms, roomData);
+			roomData[0][0].start();			
 				var temp = new entity(roomData[0][0].entities, roomData[0][0].collision, [otherArt["art/woodenChest.png"]], 7*SCALE, 7*SCALE, false, false, false, false, SCALE,SCALE);	
-				temp.prop.type = "chest";
+				temp.type = "chest";
 				temp.hitbox(0.125*SCALE, 0.125*SCALE, 0.75*SCALE, 0.75*SCALE);	
-				temp.oncollision(async (c,o,i)=>{
-				});			
 			var randEnemy = (roomInfo, count)=>{	
 				for (var i = 0; i < count; i++) {
-					var enemy = new entity(roomInfo.entities, roomInfo.collision, [otherArt["test.png"]], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
-					enemy.addAlgorithm(randMove);
-					enemy.prop["type"] = "enemy";
-					enemy.prop["hp"] = 10;
+					var e = new enemy(roomInfo.entities, roomInfo.collision, [otherArt["test.png"]], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE, SCALE);
+					e.addAlgorithm(randMove);
+					e.setHP(10);
 					//enemy.speed = 2;
-					enemy.setSpeed(2);
-					enemy.hitbox(true);
-					enemy.oncollision((c,o)=>{
-						if(o.prop["type"] == "wall" || o.prop["type"] == "room") {
+					e.setSpeed(2);
+					e.hitbox(true);
+					e.oncollision((c,o)=>{
+						if(o.type == "wall" || o.type == "room") {
 							c.stopMoving();
 						}
 					});
-					enemy.oncollision((c,o,i)=>{return (o.prop["type"] === "enemy") ? i.old : false;});
+					e.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});
 				}
 			}
 			var simpleEnemy = (roomInfo, count)=>{	
 				for (var i = 0; i < count; i++) {
-					var enemy = new entity(roomInfo.entities, roomInfo.collision, [otherArt["test.png"]], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
-					enemy.addAlgorithm(simpleTarget);
-					enemy.prop["type"] = "enemy";
-					enemy.prop["hp"] = 10;
+					var e = new enemy(roomInfo.entities, roomInfo.collision, [otherArt["test.png"]], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
+					e.addAlgorithm(simpleTarget);
+					e.setHP(10);
 
 					//enemy.speed = 2;
-					enemy.setSpeed(2);
-					enemy.hitbox(true);
-					enemy.oncollision((c,o)=>{
-						if(o.prop["type"] == "wall" || o.prop["type"] == "room") {
+					e.setSpeed(2);
+					e.hitbox(true);
+					e.oncollision((c,o)=>{
+						if(o.type == "wall" || o.type == "room") {
 							c.stopMoving();
-						} else if (o.prop["type"] == "player") {
+						} else if (o.type == "player") {
 							HP.change(-1);
 						}
 					});
@@ -1532,7 +1540,7 @@
 			randEnemy(roomData[2][1], 3);
 		}
 
-		//level1();
+		level1();
 	</script>
 	<script>
 		async function level2(){
@@ -1591,7 +1599,7 @@
 			COLLISION = roomData[3][1].collision;
 			ENTITY = roomData[3][1].entities;					
 		}
-		level4();
+		//level4();
 	</script>
 	<script>
 		async function level5(){
@@ -1624,8 +1632,11 @@
 							["NE", "WE", "NW"]];
 			var roomData = await levelGen(allRooms, "lvl8");
 			linkLevels(allRooms, roomData);
+			roomData[0][2].load();
+			COLLISION = roomData[0][2].collision;
+			ENTITY = roomData[0][2].entities;			
 		}
-		//level8();	
+		//level8();
 		async function level9(){
 			var allRooms = [["SE", "W"],
 							["NS", null],
@@ -1634,6 +1645,9 @@
 							["E", "NW"]];
 			var roomData = await levelGen(allRooms, "lvl9");
 			linkLevels(allRooms, roomData);
+			roomData[2][0].load();
+			COLLISION = roomData[2][0].collision;
+			ENTITY = roomData[2][0].entities;			
 		}
 		//level9();
 		async function level10(){
@@ -1648,6 +1662,9 @@
 							["NE", "NWE", "NW"]];
 			var roomData = await levelGen(allRooms, "lvl11");
 			linkLevels(allRooms, roomData);
+			roomData[1][2].load();
+			COLLISION = roomData[1][2].collision;
+			ENTITY = roomData[1][2].entities;			
 		}
 		//level11();
 		async function level12(){
@@ -1656,6 +1673,9 @@
 							["NE", "WE", "NW"]];
 			var roomData = await levelGen(allRooms, "lvl12");
 			linkLevels(allRooms, roomData);
+			roomData[2][1].load();
+			COLLISION = roomData[2][1].collision;
+			ENTITY = roomData[2][1].entities;			
 		}
 		//level12();	
 		async function level13(){
@@ -1666,6 +1686,9 @@
 							[null, "N", null, null]];
 			var roomData = await levelGen(allRooms, "lvl13");
 			linkLevels(allRooms, roomData);
+			roomData[4][1].load();
+			COLLISION = roomData[4][1].collision;
+			ENTITY = roomData[4][1].entities;			
 		}
 		//level13();
 		async function level14(){
@@ -1674,12 +1697,16 @@
 							[null, "N", null]];
 			var roomData = await levelGen(allRooms, "lvl14");
 			linkLevels(allRooms, roomData);
+			roomData[1][1].load();
+			COLLISION = roomData[1][1].collision;
+			ENTITY = roomData[1][1].entities;				
 		}
 		//level14();
 		async function level15(){
 			var allRooms = [["None"]];
 			var roomData = await levelGen(allRooms, "lvl5");
 			linkLevels(allRooms, roomData);
+
 		}
 		//level15();					
 	</script>

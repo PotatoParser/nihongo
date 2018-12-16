@@ -12,7 +12,7 @@ app.use(_parser.urlencoded({limit: "50mb", extended: true}));
 //app.use(express.bodyParser({limit:"50mb"}));
 app.post("/openMap", (req, res)=>{
 	var dir = req.body.dir;
-	var data = fs.readdirSync(dir).filter((str)=>{if(str.indexOf("png") != -1) return true; return false;});
+	var data = fs.readdirSync(dir).filter((str)=>{if(str.indexOf("png") != -1 && str.indexOf("Map") == -1) return true; return false;});
 	console.log(data);
 	res.send(data);
 });
