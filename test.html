@@ -35,6 +35,13 @@
 		border: 4px solid white;
 		position:fixed;
 	}
+	.selector{
+		/*outline: 5px dashed white;*/
+		border-radius: 10px;
+		border: 4px solid white;
+		position:fixed;
+		pointer-events: none;
+	}	
 	.slot:hover{
 		background-color: rgba(255,255,255,0.3);
 	}
@@ -245,6 +252,7 @@
 				this.mainKey = keyCode;
 				this.keyDown = false;
 				this.whenDown = (e)=>{
+					//.stopImmediatePropagation();
 					if (e.code != this.mainKey) return;
 					if (!this.keyDown) {
 						this.keyDown = true;
@@ -462,22 +470,6 @@
 				this.addCollision(tempX, tempY+tempHeight, tempWidth, "x");
 				this.addCollision(tempX+tempWidth, tempY, tempHeight, "y");
 			}
-			modifiedHitbox(){
-				this.colArea.x = [];
-				this.colArea.y = [];
-				//var tempX = this.hit.offX || (this.x+(xOffset || 0));
-				//var tempY = this.hit.offY || (this.y+(yOffset || 0));
-				var tempX = this.x+(xOffset || this.hit.offX);
-				var tempY = this.y+(yOffset || this.hit.offY);
-				//var tempY = this.hit.offY || (this.y+(yOffset || 0));				
-				var tempWidth =  this.hit.offWidth;
-				var tempHeight = this.hit.offHeight;
-				console.log(tempX, tempY, tempWidth, tempHeight);
-				this.addCollision(tempX, tempY, tempWidth, "x");
-				this.addCollision(tempX, tempY, tempHeight, "y");
-				this.addCollision(tempX, tempY+tempHeight, tempWidth, "x");
-				this.addCollision(tempX+tempWidth, tempY, tempHeight, "y");
-			}
 			addAlgorithm(newAlg){
 				this.alg.push(newAlg);
 			}
@@ -485,6 +477,9 @@
 				for (var i = 0; i < this.alg.length; i++) {
 					this.alg[i](this);
 				}
+			}
+			setSpeed(value){
+				this.speed = value/48*SCALE;
 			}
 		}	
 		class collisionEntity extends entity{
@@ -906,58 +901,6 @@
 	var canvas = new layer((window.innerWidth-15*SCALE)/2, 1, 15*SCALE, 15*SCALE, false, 0);
 	canvas.show();
 	canvas.element.style["z-index"] = 0;	
-		/*async function start(){			
-			document.addEventListener("contextmenu", (e)=>e.preventDefault());
-			var art = await loadImages(["test.png", "testBack.png", "enemy.png", "enemyBack.png", "target.png", "newEnemy.png", "orb.png", "download3.png"]);
-			var lvl1 = new layer((window.innerWidth-15*Math.floor(window.innerHeight/15))/2, 1, 15*Math.floor(window.innerHeight/15), 15*Math.floor(window.innerHeight/15), art["download3.png"]);
-
-			var mainPlayer = new player([art["test.png"], art["testBack.png"]], 300, 300, 36, 40, 6, 8, 48,48);
-			//var box = new collisionEntity(0,0, 703, 703);
-			box.addCollision(0,canvas.height,canvas.width, "x");
-			//box.addCollision(0,0,canvas.height, "y");
-			//box.addCollision(0,canvas.height,canvas.width, "x");
-			//box.addCollision(canvas.width,0,canvas.height, "y");
-			box.prop["type"] = "wall";
-			var drawCollision = ()=>{
-				var xDir = box.colArea.x;
-				var yDir = box.colArea.y;
-				for (var i = 0; i < xDir.length; i++) {
-					var temp = xDir[i];
-					lvl1.ctx.fillStyle = 'red';
-					lvl1.ctx.fillRect(temp.x-1, temp.y,2, temp.distance);
-				}
-				for (var i = 0; i < yDir.length; i++) {
-					var temp = yDir[i];
-					lvl1.ctx.fillStyle = 'blue';
-					lvl1.ctx.fillRect(temp.x, temp.y-1,temp.distance,2);
-				}
-			};
-			mainPlayer.oncollision((c, o)=>{if(o.prop["type"] == "wall") console.log(c);});
-			mainPlayer.speed = 4;			
-			mainPlayer.onCursorMove("face", (mouse, playerData)=>{
-				if (playerData.moving()) return;
-				if (mouse.y-32 < mainPlayer.y) playerData.index = 1;
-				else playerData.index = 0;				
-			});
-			mainPlayer.onmove("KeyS", 1, "y", 0, false, ()=>{
-				mainPlayer.mouseControls.face.exe();
-			});
-			mainPlayer.onmove("KeyW", -1, "y", 1, false, ()=>{
-				mainPlayer.mouseControls.face.exe();
-			});			
-			mainPlayer.onmove("KeyA", -1, "x", null, false, false);
-			mainPlayer.onmove("KeyD", 1, "x", null, false, false);	
-			mainPlayer.onCursorClick("leftClick", "left", 1000/60, (mouse, playerData)=>{
-				var temp = new entity([art["orb.png"]], playerData.x+32-4, playerData.y+32-4, 8, 8, 4, 4);
-				//Offset height - offset
-				temp.oncollision((c, o)=>{if(o.prop["type"] == "wall") c.destroy();});
-				temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
-				temp.speed = 10;
-			}, false);
-			testLoop(()=>{requestAnimationFrame(update);}, 0);
-					readMap(testData, collisionTest);
-					drawCollision();
-		}*/
 		testLoop(()=>{requestAnimationFrame(update);}, 0);
 		//start();
 	</script>
@@ -980,7 +923,8 @@
 				}
 				if(o.prop["type"] == "wall" && o.prop["room"] != undefined) o.prop["room"].changeRoom(direction);
 			});
-			mainPlayer.speed = 4;			
+			//mainPlayer.speed = 4;	
+			mainPlayer.setSpeed(4);		
 			mainPlayer.onCursorMove("face", (mouse, playerData)=>{
 				if (playerData.moving()) return;
 				if (mouse.y-32 < mainPlayer.y) playerData.index = 1;
@@ -997,21 +941,51 @@
 
 			mainPlayer.hitbox(true);
 			mainPlayer.onCursorClick("leftClick", "left", 0, (mouse, playerData)=>{
-				var temp = new entity(ENTITY, COLLISION, [playerArt["orb.png"]], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
-				//Offset height - offset
-				temp.oncollision((c, o, i)=>{
-					if(o.prop["type"] == "wall" || o.prop["type"] == "room") c.destroy();
-					else if(o.prop["type"] == "enemy"){
-						c.destroy();
-						if (o.prop["hp"] > 0) o.prop["hp"]--;
-						else o.destroy();
-					} else return i.old;
-				});
-				temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
-				temp.speed = 10;
-				//playerData.tp(mouse.x-4-canvas.x-playerData.hit.offWidth/2, mouse.y-4-canvas.y-playerData.hit.offHeight/2);
-				//playerData.hitbox(true);
-			}, false);
+				var canvasProp = mfpp._dimension(canvas.element);
+				if (mouse.x < canvasProp.x || mouse.y < canvasProp.y || mouse.y > canvasProp.height + canvasProp.y || mouse.x > canvasProp.x + canvasProp.width) return;
+				INVENTORY.activate(mouse, playerData);
+
+			}, (mouse, playerData)=>{
+				INVENTORY.deactivate(mouse, playerData);
+			});
+			mainPlayer.oncollision((c, o, i)=>{
+				if (o.prop["type"] == "chest") {
+					var other = async ()=>{
+						var staffData = await loadImages(["staff.png", "randoRing.png"]);
+						INVENTORY.addItem(new item(staffData["staff.png"], (mouse, playerData, itemData)=>{
+							var temp = new entity(ENTITY, COLLISION, [playerArt["orb.png"]], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
+							temp.oncollision((c, o, i)=>{
+								if(o.prop["type"] == "wall" || o.prop["type"] == "room") c.destroy();
+								else if(o.prop["type"] == "enemy"){
+									c.destroy();
+									if (o.prop["hp"] > 0) o.prop["hp"]--;
+									else o.destroy();
+								} else return i.old;
+							});
+							temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
+							//temp.speed = 10;
+							temp.setSpeed(10);
+						}, false, false, 1000/60));
+						INVENTORY.addItem(new item(staffData["randoRing.png"], (mouse, playerData, itemData)=>{
+							var temp = new entity(ENTITY, COLLISION, [playerArt["orb.png"]], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
+							temp.oncollision((c, o, i)=>{
+								if(o.prop["type"] == "wall" || o.prop["type"] == "room") c.destroy();
+								else if(o.prop["type"] == "enemy"){
+									c.destroy();
+									if (o.prop["hp"] > 0) o.prop["hp"]--;
+									else o.destroy();
+								} else return i.old;
+							});
+							temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
+							//temp.speed = 10;
+							temp.setSpeed(10);
+						}, false, false, 0));
+					}
+					o.destroy();				
+					other();
+					return i.old;
+				}
+			});
 			return mainPlayer;
 		}
 		var MAINPLAYER = false;
@@ -1236,10 +1210,7 @@
 				this.width = width;
 				this.inv = document.createElement("DIV");
 				this.inv.classList.add("inventory");
-				this.inv.style.width = this.width + "px";
-				this.inv.style.height = this.width + "px";
-				this.inv.style.top = y + "px";
-				this.inv.style.left = x + "px";
+				mfpp.position(this.inv, x, y, this.width, this.width);
 				document.body.appendChild(this.inv);
 				var remainder = (width - squareWidth*4)/5;
 				var id = 0;
@@ -1253,8 +1224,10 @@
 						this.inv.appendChild(this.items[i][j].element);
 					}
 				}
-				this.press = false;
-				this.drag = false;
+				var selector = document.createElement("DIV");
+				selector.classList.add("selector");
+				mfpp.position(selector, x, y, this.width, 2*remainder-8/48*SCALE + squareWidth);	
+				document.body.appendChild(selector);			
 				this.target = false;
 				this.hover = false;
 				//button, repetition, whenDown, whenUp, objectRef
@@ -1287,6 +1260,15 @@
 				}
 				this.cursor.press.load();
 				console.log(this.cursor.press);
+				for (var i = 1; i <= 4; i++) {
+					this.createKey(i);
+					//keyCode, whenDown, whenUp, speed
+				}
+				this.current = 1;
+				this.setCurrent(1);
+			}
+			createKey(index){
+				return new key("Digit" + index, ()=>{this.setCurrent(index);}, ()=>{console.log("NO");}, 0);
 			}
 			genInv(x,y,width,id){
 				var temp = document.createElement("DIV");
@@ -1360,6 +1342,25 @@
 					}
 				}
 			}
+			setCurrent(slot) {
+				if (slot === this.current) return;
+				this.getSlot(this.current).element.style.borderColor = "white";
+				this.getSlot(slot).element.style.borderColor = "red";
+				this.deactivate();
+				this.current = slot;
+			}
+			activate(mouse, entityData) {
+				var temp = this.getSlot(this.current).item;
+				if (temp == null) return;
+				if (typeof temp.active == "function") temp.active(mouse, entityData);
+			}
+			deactivate(mouse, entityData) {
+				var temp = this.getSlot(this.current).item;
+				if (temp == null) return;
+				if (typeof temp.active == "function") {
+					temp.deactivate();
+				}			
+			}
 		}
 		var INVENTORY = new inventory(5, 6.25*SCALE, (window.innerWidth-15*SCALE)/2-20, ((window.innerWidth-15*SCALE)/2-20)/8*1.5);
 		class statusBar {
@@ -1384,7 +1385,7 @@
 				this.element.appendChild(this.data);
 			}
 			update(value){
-				this.currentValue = value;				
+				this.currentValue = Math.max(0, value);				
 				var percent = Math.min(value/this.maxValue, 1);
 				this.element.style.width = this.prop.width*percent + "px";
 				this.data.innerHTML = `${this.currentValue}/${this.maxValue}`;				
@@ -1410,25 +1411,38 @@
 				return this.maxValue;
 			}
 		}
-		var HP = new statusBar(5, 200, (window.innerWidth-15*SCALE)/2-20, 30, "red", 100, 100);
-		var MP = new statusBar(5, 250, (window.innerWidth-15*SCALE)/2-20, 30, "blue", 100, 100);
+		var HP = new statusBar(5/48*SCALE, 200/48*SCALE, (window.innerWidth-15*SCALE)/2-20, 30/48*SCALE, "red", 100, 100);
+		var MP = new statusBar(5/48*SCALE, 250/48*SCALE, (window.innerWidth-15*SCALE)/2-20, 30/48*SCALE, "blue", 100, 100);
 		MP.change(-50);	
 		class item {
-			constructor(image, properties){
+			constructor(image, active, passive, cooldown, repetition, properties){
 				this.img = image;
 				this.active = false;
 				this.passive = null;
+				this.on = false;
+				if (typeof active == 'function') this.active = (mouse, entityData)=>{
+					this.on = true;
+					active(mouse, entityData, this);
+					if (repetition !== 0) {
+						this.on = setInterval(()=>{
+							active(mouse, entityData, this);
+						}, repetition);
+					}
+				};
 				this.img.classList.add("item");
 				for (var key in properties) {
 					this[key] = properties[key];
 				}
+				this.cooldown = cooldown;				
 			}
-
+			deactivate(){
+				if (this.on) {
+					clearInterval(this.on);
+					this.on = false;
+				}
+			}
 		}
 		async function level1(){
-			var staffData = await loadImages(["staff.png", "randoRing.png"]);
-			INVENTORY.addItem(new item(staffData["staff.png"]));
-			INVENTORY.addItem(new item(staffData["randoRing.png"]));
 			var allRooms = [["SE", "WS", "S"],
 							["NE", "NWS", "NS"],
 							[null, "NE", "NW"]];
@@ -1447,14 +1461,18 @@
 			roomData[2][2].connect(roomData[1][2], "N");
 			roomData[1][2].connect(roomData[0][2], "N");
 				var temp = new entity(roomData[0][0].entities, roomData[0][0].collision, [otherArt["art/woodenChest.png"]], 7*SCALE, 7*SCALE, false, false, false, false, SCALE,SCALE);	
-				temp.hitbox(0.125*SCALE, 0.125*SCALE, 0.75*SCALE, 0.75*SCALE);				
+				temp.prop.type = "chest";
+				temp.hitbox(0.125*SCALE, 0.125*SCALE, 0.75*SCALE, 0.75*SCALE);	
+				temp.oncollision(async (c,o,i)=>{
+				});			
 			var randEnemy = (roomInfo, count)=>{	
 				for (var i = 0; i < count; i++) {
 					var enemy = new entity(roomInfo.entities, roomInfo.collision, [otherArt["test.png"]], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
 					enemy.addAlgorithm(randMove);
 					enemy.prop["type"] = "enemy";
 					enemy.prop["hp"] = 10;
-					enemy.speed = 2;
+					//enemy.speed = 2;
+					enemy.setSpeed(2);
 					enemy.hitbox(true);
 					enemy.oncollision((c,o)=>{
 						if(o.prop["type"] == "wall" || o.prop["type"] == "room") {
@@ -1471,7 +1489,8 @@
 					enemy.prop["type"] = "enemy";
 					enemy.prop["hp"] = 10;
 
-					enemy.speed = 2;
+					//enemy.speed = 2;
+					enemy.setSpeed(2);
 					enemy.hitbox(true);
 					enemy.oncollision((c,o)=>{
 						if(o.prop["type"] == "wall" || o.prop["type"] == "room") {
