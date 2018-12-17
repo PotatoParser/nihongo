@@ -33,10 +33,11 @@ class room {
 		this.botLayer.show();
 		this.topLayer.show();
 	}
-	start() {
+	start(x, y) {
 		this.load();
 		ENTITY = this.entities;
 		COLLISION = this.collision;
+		MAINPLAYER.tp(x,y);
 	}
 	unload() {
 		this.botLayer.hide();

@@ -194,6 +194,7 @@ class entity{
 	tp(x,y){
 		if (x) this.x = x;
 		if (y) this.y = y;
+		if (this.movehit) this.hitbox();
 	}
 	moveX(newX){
 		if (newX < this.x) this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX);
@@ -309,7 +310,8 @@ class entity{
 	destroy(){
 		if (this.moveToLoop) clearInterval(this.moveToLoop);
 		delete this.ENTITY[this.id];
-		delete this.COLLISION[this.id];				
+		delete this.COLLISION[this.id];	
+		this.clearAllEffects();
 		delete this;
 	}
 	addCollision(x, y, distance, direction){
@@ -387,6 +389,9 @@ class entity{
 		this.effects[name].after();
 		delete this.effects[name];
 	}
+	clearAllEffects(){
+		for (var key in this.effects) this.clearEffect(key);		
+	}
 	includesEffect(name) {
 		return this.effects[name] != undefined;
 	}
@@ -410,6 +415,18 @@ class enemy extends entity{
 		GOLD+=this.gold;
 		this.destroy();
 	}
+}
+class boss extends entity{
+	constructor(entity, collision, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
+		super(entity, collision, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height);
+		this.type = "boss";
+		this.gold = 20;
+		this.hitPlayer = true;
+	}
+	death(){
+		GOLD+=this.gold;
+		this.destroy();
+	}	
 }
 // offset of 8, hitHeight of 
 class player extends entity{
@@ -902,7 +919,8 @@ class effect {
 	constructor(repetition, totalDuration, effectDuring, effectAfter){
 		this.reps = repetition;
 		this.counter = 0;
-		this.interval = totalDuration/this.reps;
+		if (this.reps !== 0) this.interval = totalDuration/this.reps;
+		else this.interval = totalDuration;
 		this.during = effectDuring;
 		if (typeof this.during != 'function') this.during = ()=>{};
 		this.after = effectAfter;
@@ -910,7 +928,7 @@ class effect {
 		this.timer = setInterval(()=>{
 			this.counter++;
 			this.during();
-			if (this.counter >= this.reps) {
+			if (this.counter >= this.reps && this.reps !== 0) {
 				clearInterval(this.timer);
 				this.after();
 			}
@@ -919,9 +937,9 @@ class effect {
 }
 
 class orb extends entity {
-	constructor(entity, collision, image, hitWidth, hitHeight, offsetX, offsetY, width, height){
-		super(entity, collision, image, 0, 0, hitWidth, hitHeight, offsetX, offsetY, width, height);
-		this.x = MAINPLAYER.x+MAINPLAYER.hit.offWidth/2-this.hit.offWidth/2;
-		this.y = MAINPLAYER.y+MAINPLAYER.hit.offHeight/2-this.hit.offHeight/2;		
+	constructor(reference, image, hitWidth, hitHeight, offsetX, offsetY, width, height){
+		super(ENTITY, COLLISION, image, 0, 0, hitWidth, hitHeight, offsetX, offsetY, width, height);
+		this.x = reference.x+reference.hit.offWidth/2-this.hit.offWidth/2;
+		this.y = reference.y+reference.hit.offHeight/2-this.hit.offHeight/2;		
 	}
 }

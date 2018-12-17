@@ -1,10 +1,33 @@
 var ALLITEMS;
+var ALGORITHMS = {
+	simpleTarget: (c)=>{
+		if (Math.abs(MAINPLAYER.x-c.x) > c.speed){
+			if (c.x < MAINPLAYER.x) {
+				c.moveX(c.x+c.speed);
+			} else if (c.x > MAINPLAYER.x) c.moveX(c.x-c.speed);
+		}
+		if (Math.abs(MAINPLAYER.y-c.y) > c.speed) {
+			if (c.y < MAINPLAYER.y) {	
+				c.moveY(c.y+c.speed);
+			} else if (c.y > MAINPLAYER.y) c.moveY(c.y-c.speed);	
+		}
+	},
+	randMove: (c)=>{
+		if (c.moveToLoop) {
+			return;
+		}
+		var temp = rand(1,15);
+		var temp2 = rand(1,15);		
+		c.moveTo(temp*SCALE, temp2*SCALE);			
+	}
+
+}
 function dealDamage(damage){
 	return (c, o, i)=>{
 		if(o.type == "wall" || o.type == "room") c.destroy();
 		else if(o.type == "enemy"){
 			c.destroy();
-			if (o.hp > 0) o.hp-=damage;
+			if (o.hp > 0) o.updateHP(-damage);
 			if (o.hp <= 0) {
 				GOLD+=o.gold;
 				o.destroy();
@@ -23,26 +46,6 @@ async function level1(){
 	var roomData = await levelGen(allRooms, "lvl1");
 	//var otherArt = await loadImages(["art/woodenChest.png", "test.png"]);
 	await globalLoad("art/woodenChest.png", "test.png", "staff.png", "orb.png", "randoRing.png");
-	var simpleTarget = (c)=>{
-		if (Math.abs(MAINPLAYER.x-c.x) > c.speed){
-			if (c.x < MAINPLAYER.x) {
-				c.moveX(c.x+c.speed);
-			} else if (c.x > MAINPLAYER.x) c.moveX(c.x-c.speed);
-		}
-		if (Math.abs(MAINPLAYER.y-c.y) > c.speed) {
-			if (c.y < MAINPLAYER.y) {	
-				c.moveY(c.y+c.speed);
-			} else if (c.y > MAINPLAYER.y) c.moveY(c.y-c.speed);	
-		}
-	}
-	var randMove = (c)=>{
-		if (c.moveToLoop) {
-			return;
-		}
-		var temp = rand(1,15);
-		var temp2 = rand(1,15);		
-		c.moveTo(temp*SCALE, temp2*SCALE);			
-	}
 	linkLevels(allRooms, roomData);
 	//[otherArt["art/woodenChest.png"]]
 	var temp = new entity(roomData[0][0].entities, roomData[0][0].collision, ["art/woodenChest.png"], 7*SCALE, 7*SCALE, false, false, false, false, SCALE,SCALE);	
@@ -53,16 +56,15 @@ async function level1(){
 	var randEnemy = (roomInfo, count)=>{	
 		for (var i = 0; i < count; i++) {
 			let e = new enemy(roomInfo.entities, roomInfo.collision, ["test.png"], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE, SCALE);
-			e.addAlgorithm(randMove);
+			e.addAlgorithm(ALGORITHMS.randMove);
 			e.setHP(10);
-			e.setSpeed(2);
+			e.setSpeed(1);
 			e.hitbox(true);
 			e.oncollision((c, o, i)=>{
 				if(o.type == "wall" || o.type == "room") {
 					c.stopMoving();
 				} else if (o.type == "player") {
 					if (!c.hitPlayer) return i.old;
-					//HP.change(-1);
 				}
 			});
 			e.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});
@@ -71,9 +73,9 @@ async function level1(){
 	var simpleEnemy = (roomInfo, count)=>{	
 		for (var i = 0; i < count; i++) {
 			let e = new enemy(roomInfo.entities, roomInfo.collision, ["test.png"], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
-			e.addAlgorithm(simpleTarget);
+			e.addAlgorithm(ALGORITHMS.simpleTarget);
 			e.setHP(10);
-			e.setSpeed(2);
+			e.setSpeed(1);
 			e.hitbox(true);
 			e.oncollision((c,o)=>{
 				if(o.type == "wall" || o.type == "room") {
@@ -82,6 +84,7 @@ async function level1(){
 					HP.change(-1);
 				}
 			});
+			e.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});			
 		}
 	}
 	var testDummy = (roomInfo, count)=>{	
@@ -92,17 +95,105 @@ async function level1(){
 			e.hitbox(true);
 		}
 	}	
-	roomData[0][0].start();				
+	roomData[1][1].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 9*SCALE);				
 	// When player is out, it tps the player.
-	//simpleEnemy(roomData[0][0], 1);
+	simpleEnemy(roomData[0][0], 1);
 	simpleEnemy(roomData[2][2], 1);
 	simpleEnemy(roomData[1][2], 1);
 	randEnemy(roomData[0][1], 3);
 	randEnemy(roomData[1][0], 3);
 	randEnemy(roomData[2][1], 3);
-	testDummy(roomData[0][0], 1);
+	//testDummy(roomData[0][0], 1);
 }
-HP.change(1000);
+
+async function level5(){
+	LEVEL = 5;
+	await loadAllItems();
+	INVENTORY.addItem(ALLITEMS["Fire Staff"]);	
+	await globalLoad("art/woodenChest.png", "test.png", "staff.png", "orb.png", "randoRing.png");
+
+	var allRooms = [["None"]];
+	var roomData = await levelGen(allRooms, "lvl5");
+	linkLevels(allRooms, roomData);
+	var twoFace = new enemy(roomData[0][0].entities, roomData[0][0].collision, ["test.png"], 7*SCALE, 3*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
+	twoFace.addAlgorithm(ALGORITHMS.randMove);
+	twoFace.setHP(300);
+	twoFace.setSpeed(4);
+	twoFace.hitbox(true);
+	twoFace.oncollision((c,o)=>{
+		if(o.type == "wall" || o.type == "room") {
+			c.stopMoving();
+		} else if (o.type == "player") {
+			HP.change(-3);
+		}
+	});
+	var expressions = {
+		happy: ()=>{
+			twoFace.clearAllEffects();
+			twoFace.addEffect("HappyTime", 0, 1000, ()=>{
+				let paths = [[0,1], [-1,0], [1,0], [0,-1]]
+				for (let a = 0; a < paths.length; a++) {
+					for (let i = 0; i < 3; i++) {
+						setTimeout(()=>{
+							let temp = new orb(twoFace, ["orb.png"], 8, 8, 4, 4);
+							temp.oncollision((c, o, i)=>{
+								if(o.type == "wall" || o.type == "room") c.destroy();
+								else if(o.type == "player"){
+									c.destroy();
+									HP.change(-5);
+								} else return i.old;
+							});
+							temp.moveTo(temp.x + paths[a][0],temp.y+paths[a][1], ()=>{});
+							temp.setSpeed(10);
+						}, i*200);
+					}			
+				}
+			}, false);		
+		},
+		sad: ()=>{
+			twoFace.clearAllEffects();
+			twoFace.addEffect("SadTime", 0, 2000, ()=>{
+				MAINPLAYER.changeSpeed(-1);
+				MAINPLAYER.addEffect("Saddened", 1, 1000, false, ()=>{MAINPLAYER.changeSpeed(1);});
+			}, false);			
+		},
+		excited: ()=>{
+			twoFace.clearAllEffects();
+			let paths = [[0,1], [-1,0], [1,0], [0,-1], [1,1], [-1,-1], [1,-1], [-1,1]];
+				for (let a = 0; a < paths.length; a++) {
+					setTimeout(()=>{
+						let temp = new orb(twoFace, ["orb.png"], 8, 8, 4, 4);
+						temp.oncollision((c, o, i)=>{
+							if(o.type == "wall" || o.type == "room") c.destroy();
+							else if(o.type == "player"){
+								c.destroy();
+								HP.change(-5);
+							} else return i.old;
+						});
+						temp.moveTo(temp.x + paths[a][0],temp.y+paths[a][1], ()=>{});
+						temp.setSpeed(10);
+					}, 200);
+				}	
+		},
+		bored: ()=>{
+			twoFace.clearAllEffects();
+			twoFace.updateHP = (value)=>{
+				twoFace.setHP(twoFace.hp + value*2);
+			}
+			twoFace.addEffect("BoredTime", 1, 2000, ()=>{
+				twoFace.updateHP = (value)=>{
+					twoFace.setHP(twoFace.hp + value);
+				}
+			}, false);			
+		}
+	}
+	twoFace.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});		
+	roomData[0][0].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);
+	setInterval(()=>{
+		let temp = ["happy", "sad", "excited", "bored", "happy", "sad", "excited", "bored", "happy"];
+		expressions[temp[rand(0, temp.length-1)]]();
+	}, 5000);					
+}
 /*
 TEMPLATE||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 
@@ -124,7 +215,7 @@ async function loadAllItems(){
 		'Fire Staff': new item("staff.png", (mouse, playerData, itemData)=>{
 			if (!payMana(1)) return;
 			// Equal to scalings
-			var temp = new orb(ENTITY, COLLISION, ["orb.png"], 8, 8, 4, 4);
+			var temp = new orb(MAINPLAYER, ["orb.png"], 8, 8, 4, 4);
 			temp.oncollision(dealDamage(LEVEL*2));
 			temp.setSpeed(10);			
 			temp.moveToMouse(mouse, ()=>{});
@@ -272,7 +363,7 @@ async function loadAllItems(){
 			}
 			if(closest) {
 				if (!payMana(3)) return;
-				var temp = new orb(ENTITY, COLLISION, ["orb.png"], 8, 8, 4, 4);
+				var temp = new orb(MAINPLAYER, ["orb.png"], 8, 8, 4, 4);
 				temp.oncollision((c, o, i)=>{
 					if(o.type == "wall" || o.type == "room") c.destroy();
 					else if(o.type == "enemy"){
@@ -298,7 +389,7 @@ async function loadAllItems(){
 		}, false, false, 1000),	
 		'Staff of Beams': new item("staff.png", (mouse, playerData, itemData)=>{
 			if (!payMana(3)) return;
-			var orb = new orb(ENTITY, COLLISION, ["orb.png"], 8, 8, 4, 4);
+			var orb = new orb(MAINPLAYER, ["orb.png"], 8, 8, 4, 4);
 			orb.prop["enemy"] = [];
 			orb.oncollision((c, o, i)=>{
 				if(o.type == "wall" || o.type == "room") c.destroy();	
@@ -321,7 +412,7 @@ async function loadAllItems(){
 		}, false, false, 1000),	
 		'Lightning Staff': new item("staff.png", (mouse, playerData, itemData)=>{
 			if (!payMana(1)) return;
-			var temp = new orb(ENTITY, COLLISION, ["orb.png"], 8, 8, 4, 4);
+			var temp = new orb(MAINPLAYER, ["orb.png"], 8, 8, 4, 4);
 			temp.oncollision(dealDamage(LEVEL*3));
 			temp.moveToMouse(mouse, ()=>{});
 			temp.setSpeed(10);
@@ -387,7 +478,7 @@ async function loadAllItems(){
 		}, false, 5000, 0),
 		'Staff of Randomness': new item("staff.png", (mouse, playerData, itemData)=>{
 			if (!payMana(5)) return;
-			var temp = new orb(ENTITY, COLLISION, ["orb.png"], 8, 8, 4, 4);
+			var temp = new orb(MAINPLAYER, ["orb.png"], 8, 8, 4, 4);
 			temp.oncollision((c, o, i)=>{
 				if(o.type == "wall" || o.type == "room") c.destroy();
 				else if(o.type == "enemy"){
@@ -404,7 +495,7 @@ async function loadAllItems(){
 		}, false, false, 1000),	
 		'Staff of Flames': new item("staff.png", (mouse, playerData, itemData)=>{
 			if (!payMana(7)) return;
-			var temp = new orb(ENTITY, COLLISION, ["orb.png"], 8, 8, 4, 4);
+			var temp = new orb(MAINPLAYER, ["orb.png"], 8, 8, 4, 4);
 			temp.oncollision((c, o, i)=>{
 				if(o.type == "wall" || o.type == "room") c.destroy();
 				else if(o.type == "enemy"){
