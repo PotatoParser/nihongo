@@ -27,6 +27,9 @@ async function globalLoad(){
 		IMAGES[arguments[i]] = other;
 	}
 }
+function entityDistance(firstEntity, secondEntity) {
+	return distance(firstEntity.x, firstEntity.y, secondEntity.x, secondEntity.y);
+}
 class wall {
 	constructor(x, y, distance, direction, OBJ){
 		this.x = x;
@@ -262,7 +265,7 @@ class entity{
 						//console.log(x, y1, y2, temp);
 						var atImpact = this.collisionEvent[a](this, temp.impact, temp);
 						if (atImpact) {
-							console.log("SOMETHING");
+							console.log("Vertical");
 							return atImpact;
 						}
 					}
@@ -287,7 +290,7 @@ class entity{
 						//console.log(temp);
 						var atImpact = this.collisionEvent[a](this, temp.impact, temp);
 						if (atImpact) {
-							console.log("SOMETHING");
+							console.log("Horizontal");
 							return atImpact;
 						}
 					}
@@ -349,6 +352,9 @@ class entity{
 	}
 	setSpeed(value){
 		this.speed = value/48*SCALE;
+	}
+	getSpeed(){
+		return this.speed/SCALE*48;
 	}
 	updateHP(value){
 		this.setHP(this.hp + value);
@@ -787,6 +793,7 @@ class statusBar {
 	}
 	change(value){
 		this.currentValue += value;
+		this.currentValue = Math.min(this.currentValue, this.maxValue);
 		this.update(this.currentValue);
 	}
 	changeMax(value){
@@ -799,6 +806,9 @@ class statusBar {
 	getMax(){
 		return this.maxValue;
 	}
+	verify(){
+		this.change(0);
+	}
 }
 class item {
 	constructor(image, active, passive, cooldown, repetition, properties){
@@ -808,12 +818,29 @@ class item {
 		this.active = false;
 		this.passive = null;
 		this.on = false;
+		this.oncooldown = false;
+		this.cooldown = cooldown;			
+		this.currentCool = false;
 		if (typeof active == 'function') this.active = (mouse, entityData)=>{
 			this.on = true;
-			active(mouse, entityData, this);
+			if (!this.oncooldown) {
+				active(mouse, entityData, this);
+				if (this.cooldown) {
+					this.oncooldown = true;
+					this.currentCool = setTimeout(()=>{
+						this.oncooldown = false;
+					}, this.cooldown);
+				}
+			}
 			if (repetition !== 0) {
 				this.on = setInterval(()=>{
-					active(mouse, entityData, this);
+					if (!this.oncooldown) {
+						active(mouse, entityData, this);
+						if (this.cooldown) {
+							this.oncooldown = true;
+							this.currentCool = setTimeout(()=>{this.oncooldown = false;}, this.cooldown);
+						}
+					}
 				}, repetition);
 			}
 		};
@@ -821,7 +848,6 @@ class item {
 		for (var key in properties) {
 			this[key] = properties[key];
 		}
-		this.cooldown = cooldown;	
 		this.slot = 0;			
 		this.slotNum = 0;
 	}
@@ -835,17 +861,22 @@ class item {
 		this.slot.removeItem(this.slotNum);
 	}
 }
-
-/*async function asyncEntity(newEntity, collision, images, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height){
-	var temp = await loadImages(images);
-	var other = [];
-	for (var key in temp) {
-		other.push(temp[key]);
+class effect {
+	constructor(repetition, totalDuration, effectDuring, effectAfter){
+		this.reps = repetition;
+		this.counter = 0;
+		this.interval = totalDuration/this.reps;
+		this.during = effectDuring;
+		if (typeof this.during != 'function') this.during = ()=>{};
+		this.after = effectAfter;
+		if (typeof this.after != 'function') this.after = ()=>{};
+		this.timer = setInterval(()=>{
+			this.counter++;
+			this.during();
+			if (this.counter >= this.reps) {
+				clearInterval(this.timer);
+				this.after();
+			}
+		}, this.interval);
 	}
-	return new entity(newEntity, collision, other, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height);
 }
-
-async function asyncItem(image, active, passive, cooldown, repetition, properties){
-	var temp = await loadImages([image]);
-	return new item(temp[image], active, passive, cooldown, repetition, properties);
-}*/

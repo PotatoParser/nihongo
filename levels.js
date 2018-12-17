@@ -48,7 +48,7 @@ async function level1(){
 	temp.hitbox(0.125*SCALE, 0.125*SCALE, 0.75*SCALE, 0.75*SCALE);	
 	temp.storeItem(ALLITEMS["Fire Staff"]);
 	ALLITEMS["Bento Bomb"]["counter"] = 10;
-	temp.storeItem(ALLITEMS["Bento Bomb"]);
+	temp.storeItem(ALLITEMS["Staff of Dashing"]);
 	var randEnemy = (roomInfo, count)=>{	
 		for (var i = 0; i < count; i++) {
 			var e = new enemy(roomInfo.entities, roomInfo.collision, ["test.png"], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE, SCALE);
@@ -59,6 +59,8 @@ async function level1(){
 			e.oncollision((c,o)=>{
 				if(o.type == "wall" || o.type == "room") {
 					c.stopMoving();
+				} else if (o.type == "player") {
+					HP.change(-1);
 				}
 			});
 			e.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});
@@ -80,16 +82,25 @@ async function level1(){
 			});
 		}
 	}
+	var testDummy = (roomInfo, count)=>{	
+		for (var i = 0; i < count; i++) {
+			var e = new enemy(roomInfo.entities, roomInfo.collision, ["test.png"], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE, SCALE);
+			e.setHP(10);
+			e.setSpeed(2);
+			e.hitbox(true);
+		}
+	}	
 	roomData[0][0].start();				
 	// When player is out, it tps the player.
-	simpleEnemy(roomData[0][0], 1);
+	//simpleEnemy(roomData[0][0], 1);
 	simpleEnemy(roomData[2][2], 1);
 	simpleEnemy(roomData[1][2], 1);
 	randEnemy(roomData[0][1], 3);
 	randEnemy(roomData[1][0], 3);
 	randEnemy(roomData[2][1], 3);
+	testDummy(roomData[0][0], 1);
 }
-
+HP.change(1000);
 /*
 TEMPLATE||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 
@@ -149,9 +160,141 @@ async function loadAllItems(){
 			itemData.removeItem();
 		}, false, false, 0),	
 		"Upgrade Ring": new item("randoRing.png", (mouse, playerData, itemData)=>{
-			MP.update(MP.getMax()*0.25);
+			if (!payMana(25)) return;
+			var maxHP = HP.getMax() + 0;
+			HP.updateMax(maxHP + 25);
+			HP.change(25);
+			new effect(1, 5000, false, ()=>{
+				HP.updateMax(HP.getMax()-25);
+				HP.verify();
+			});
+		}, false, false, 0),
+		"Combo Potion": new item("randoRing.png", (mouse, playerData, itemData)=>{
+			HP.update(HP.getMax()*0.5);
+			MP.update(MP.getMax()*0.5);			
 			itemData.removeItem();
-		}, false, false, 0),						
+		}, false, false, 0),
+		"Staff of Healing": new item("randoRing.png", (mouse, playerData, itemData)=>{
+			if (!payMana(10)) return;
+			HP.change(LEVEL*2);
+		}, false, 10000, 0),		
+		'Sanguine Ring': new item("randoRing.png", (mouse, playerData, itemData)=>{
+			if (MP.getValue()<1 && HP.getValue() < 1) return;
+			HP.change(-1);
+			MP.change(-1);
+			var temp = new entity(ENTITY, COLLISION, ["orb.png"], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
+			temp.oncollision((c, o, i)=>{
+				if(o.type == "wall" || o.type == "room") c.destroy();
+				else if(o.type == "enemy"){
+					c.destroy();
+					if (o.hp > 0) o.hp-=LEVEL*2;
+					if (o.hp <= 0) {
+						GOLD+=o.gold;
+						HP.change(15);
+						o.destroy();
+					}
+				} else return i.old;
+			});
+			temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
+			temp.setSpeed(10);
+		}, false, false, 500),	
+		"Ring of Speed": new item("randoRing.png", (mouse, playerData, itemData)=>{
+			if (!payMana(10)) return;
+			var currentSpeed = MAINPLAYER.getSpeed() + 0;
+			var increasedSpeed = currentSpeed/2;
+			MAINPLAYER.setSpeed(MAINPLAYER.getSpeed() + increasedSpeed);
+			new effect(1, 10000, false, ()=>{
+				MAINPLAYER.setSpeed(MAINPLAYER.getSpeed() - increasedSpeed);
+			});
+		}, false, 10000, 0),	
+		"Staff of Tracking": new item("staff.png", (mouse, playerData, itemData)=>{
+			var closest = null;
+			var dist = Number.MAX_SAFE_INTEGER;
+			var temp = Object.getOwnPropertySymbols(ENTITY);
+			for (var i = 0; i < temp.length; i++) {
+				if (ENTITY[temp[i]].type == "enemy") {
+					var tot = entityDistance(MAINPLAYER, ENTITY[temp[i]]);
+					if (tot < dist) {
+						dist = tot;
+						closest = ENTITY[temp[i]];
+					}
+				}
+			}
+			if(closest) {
+				if (!payMana(3)) return;
+				var temp = new entity(ENTITY, COLLISION, ["orb.png"], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
+				temp.oncollision((c, o, i)=>{
+					if(o.type == "wall" || o.type == "room") c.destroy();
+					else if(o.type == "enemy"){
+						c.destroy();
+						if (o.hp > 0) o.hp-=LEVEL*3;
+						if (o.hp <= 0) {
+							GOLD+=o.gold;
+							o.destroy();
+						}
+					} else return i.old;
+				});
+				var simpleTarget = (c)=>{
+						if (c.x < closest.x) {
+							c.moveX(c.x+c.speed);
+						} else if (c.x > closest.x) c.moveX(c.x-c.speed);
+						if (c.y < closest.y) {	
+							c.moveY(c.y+c.speed);
+						} else if (c.y > closest.y) c.moveY(c.y-c.speed);
+				}
+				temp.addAlgorithm(simpleTarget);
+				temp.setSpeed(5);
+			}						
+		}, false, false, 1000),	
+		'Staff of Beams': new item("staff.png", (mouse, playerData, itemData)=>{
+			if (!payMana(3)) return;
+			var orb = new entity(ENTITY, COLLISION, ["orb.png"], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
+			orb.prop["enemy"] = [];
+			orb.oncollision((c, o, i)=>{
+				if(o.type == "wall" || o.type == "room") c.destroy();	
+
+				if(o.type == "enemy"){
+					for (var a = 0; a < orb.prop["enemy"].length; a++) {
+						if (o.id == orb.prop["enemy"][a]) return i.old;
+					}
+					orb.prop["enemy"].push(o.id);
+					if (o.hp > 0) o.hp-=LEVEL*3;
+					if (o.hp <= 0) {
+						GOLD+=o.gold;
+						o.destroy();
+					}
+				}
+				return i.old;
+			});
+			orb.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
+			orb.setSpeed(10);
+		}, false, false, 1000),	
+		'Lightning Staff': new item("staff.png", (mouse, playerData, itemData)=>{
+			if (!payMana(1)) return;
+			var temp = new entity(ENTITY, COLLISION, ["orb.png"], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
+			temp.oncollision(dealDamage(LEVEL*3));
+			temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
+			temp.setSpeed(10);
+		}, false, false, 1000),		
+		'Staff of Dashing': new item("staff.png", (mouse, playerData, itemData)=>{
+			if (!payMana(10)) return;
+			var x = mouse.x-4-canvas.x;
+			var y = mouse.y-4-canvas.y;
+			var dist = distance(x, y, MAINPLAYER.x, MAINPLAYER.y);
+			if (dist > 2*SCALE) {
+
+			}
+			MAINPLAYER.setSpeed(100);
+			MAINPLAYER.moveTo(x, y, false);
+			//temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
+			//temp.setSpeed(10);
+		}, false, 2000, 0),								
 	}
 	ALLITEMS = temp;
+}
+
+function payMana(num){
+	if (MP.getValue()<num) return false;
+	MP.change(-1*num);
+	return true;
 }
