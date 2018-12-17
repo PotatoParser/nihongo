@@ -185,6 +185,7 @@ class entity{
 		this.hp = 0;
 		this.type = null;
 		this.storedItems = [];
+		this.effects = {};
 	}
 	draw(ctx){
 		//console.log(this.img, this, JSON.parse(JSON.stringify(IMAGES)));
@@ -234,7 +235,12 @@ class entity{
 			this.moveY(tempY);
 			this.moveX(tempX);
 		}, 1000/60);
-	}					
+	}
+	moveToMouse(mouse, reach){
+		var x = mouse.x-canvas.x-this.hit.offWidth/2;
+		var y = mouse.y-canvas.y-this.hit.offHeight/2;
+		this.moveTo(x, y,reach);
+	}
 	stopMoving(){
 		// Not currently rounding!!!!
 		if (this.moveToLoop) {
@@ -353,6 +359,9 @@ class entity{
 	setSpeed(value){
 		this.speed = value/48*SCALE;
 	}
+	changeSpeed(value) {
+		this.setSpeed(this.getSpeed() + value);
+	}
 	getSpeed(){
 		return this.speed/SCALE*48;
 	}
@@ -369,6 +378,18 @@ class entity{
 	storeItem(item) {
 		this.storedItems.push(item);
 	}
+	addEffect(name, repetition, totalDuration, effectDuring, effectAfter){
+		this.effects[name] = new effect(repetition, totalDuration, effectDuring, effectAfter);
+	}
+	clearEffect(name) {
+		if(this.effects[name] == undefined) return;
+		clearInterval(this.effects[name].timer);
+		this.effects[name].after();
+		delete this.effects[name];
+	}
+	includesEffect(name) {
+		return this.effects[name] != undefined;
+	}
 }	
 class collisionEntity extends entity{
 	constructor(entity, collision, boxX, boxY, boxHeight, boxWidth){
@@ -383,6 +404,7 @@ class enemy extends entity{
 		super(entity, collision, image, x, y, hitWidth, hitHeight, offsetX, offsetY, width, height);
 		this.type = "enemy";
 		this.gold = 1;
+		this.hitPlayer = true;
 	}
 	death(){
 		GOLD+=this.gold;
@@ -698,10 +720,13 @@ class inventory {
 				image.remove();
 				this.getSlot(this.hover).element.appendChild(image);
 				if (switcher) {
-					this.getSlot(this.hover).item = firstItem;
-					this.getSlot(this.target).item = switcher;
+					this.setItem(this.hover, firstItem);
+					this.setItem(this.target, switcher);
+					//this.getSlot(this.hover).item = firstItem;
+					//this.getSlot(this.target).item = switcher;
 				} else {
-					this.getSlot(this.hover).item = firstItem;
+					this.setItem(this.hover, firstItem);
+					//this.getSlot(this.hover).item = firstItem;
 					this.getSlot(this.target).item = null;
 				}
 			}	
@@ -721,6 +746,7 @@ class inventory {
 		this.getSlot(slot).item = item;
 		item.slot = this;
 		item.slotNum = slot;
+		item.passiveon();
 		this.getSlot(slot).element.appendChild(item.img);
 	}
 	addItem(item) {
@@ -798,7 +824,7 @@ class statusBar {
 	}
 	changeMax(value){
 		this.maxValue += value;
-		this.update(this.maxValue);
+		this.updateMax(this.maxValue);
 	}
 	getValue(){
 		return this.currentValue;
@@ -816,7 +842,9 @@ class item {
 		this.quantity = 1;
 		this.img = IMAGES[image].cloneNode();
 		this.active = false;
-		this.passive = null;
+		if (typeof passive == 'function') this.passive = passive;
+		else this.passive = ()=>{};
+		this.current = false;
 		this.on = false;
 		this.oncooldown = false;
 		this.cooldown = cooldown;			
@@ -857,6 +885,15 @@ class item {
 			this.on = false;
 		}
 	}
+	passiveon(){
+		if (this.slotNum > 4) return this.passiveoff();		
+		if (this.current) return;
+		this.current = true;
+		this.passive(this); // Passes the item into it
+	}
+	passiveoff(){
+		this.current = false;
+	}
 	removeItem(){
 		this.slot.removeItem(this.slotNum);
 	}
@@ -878,5 +915,13 @@ class effect {
 				this.after();
 			}
 		}, this.interval);
+	}
+}
+
+class orb extends entity {
+	constructor(entity, collision, image, hitWidth, hitHeight, offsetX, offsetY, width, height){
+		super(entity, collision, image, 0, 0, hitWidth, hitHeight, offsetX, offsetY, width, height);
+		this.x = MAINPLAYER.x+MAINPLAYER.hit.offWidth/2-this.hit.offWidth/2;
+		this.y = MAINPLAYER.y+MAINPLAYER.hit.offHeight/2-this.hit.offHeight/2;		
 	}
 }

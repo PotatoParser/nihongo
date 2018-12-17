@@ -189,9 +189,18 @@
 			}
 			//console.log("LOL");
 		}				
-		function rand(min, max) {
+		/*function rand(min, max) {
 			if (min === max) return max;
 			return Math.round(Math.random()*(max-min) + min);
+		}*/
+		function rand(first, second) {
+			if (first === second) return first;
+			if (first > second) {
+				let temp = first;
+				first = second;
+				second = temp;
+			} 
+			return Math.floor(Math.random()*(second-first+1))+first;
 		}
 		function rng(min, max, excludeMin, excludeMax) {
 			var low = excludeMin-min;

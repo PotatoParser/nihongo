@@ -43,44 +43,16 @@ const PLAYER = async ()=>{
 	});
 	mainPlayer.oncollision((c, o, i)=>{
 		if (o.type == "chest") {
-			/*var other = async ()=>{
-				var staffData = await loadImages(["staff.png", "randoRing.png"]);
-				INVENTORY.addItem(new item(staffData["staff.png"], (mouse, playerData, itemData)=>{
-					var temp = new entity(ENTITY, COLLISION, [playerArt["orb.png"]], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
-					temp.oncollision((c, o, i)=>{
-						if(o.type == "wall" || o.type == "room") c.destroy();
-						else if(o.type == "enemy"){
-							c.destroy();
-							if (o.hp > 0) o.hp--;
-							else o.destroy();
-						} else return i.old;
-					});
-					temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
-					//temp.speed = 10;
-					temp.setSpeed(10);
-				}, false, false, 1000/60));
-				INVENTORY.addItem(new item(staffData["randoRing.png"], (mouse, playerData, itemData)=>{
-					var temp = new entity(ENTITY, COLLISION, [playerArt["orb.png"]], playerData.x+playerData.hit.offWidth/2-4, playerData.y+playerData.hit.offHeight/2-4, 8, 8, 4, 4);
-					temp.oncollision((c, o, i)=>{
-						if(o.type == "wall" || o.type == "room") c.destroy();
-						else if(o.type == "enemy"){
-							c.destroy();
-							if (o.hp > 0) o.hp--;
-							else o.destroy();
-						} else return i.old;
-					});
-					temp.moveTo(mouse.x-4-canvas.x, mouse.y-4-canvas.y, ()=>{});
-					//temp.speed = 10;
-					temp.setSpeed(10);
-				}, false, false, 0));
-			}*/
 			var temp = o.storedItems;
 			for (var i = 0; i < temp.length; i++) {
 				INVENTORY.addItem(temp[i]);
 			}
 			o.destroy();				
-			//other();
 			return i.old;
+		}
+		if (o.type == "enemy") {
+			if (!o.hitPlayer) return i.old;
+			HP.change(-1);
 		}
 	});
 	return mainPlayer;
