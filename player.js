@@ -34,6 +34,7 @@ const PLAYER = async ()=>{
 
 	mainPlayer.hitbox(true);
 	mainPlayer.onCursorClick("leftClick", "left", 0, (mouse, playerData)=>{
+		if (mainPlayer.includesEffect("Stunned")) return;
 		var canvasProp = mfpp._dimension(canvas.element);
 		if (mouse.x < canvasProp.x || mouse.y < canvasProp.y || mouse.y > canvasProp.height + canvasProp.y || mouse.x > canvasProp.x + canvasProp.width) return;
 		INVENTORY.activate(mouse, playerData);
@@ -51,13 +52,25 @@ const PLAYER = async ()=>{
 			return i.old;
 		}
 		if (o.type == "enemy") {
+			//if (!o.hitPlayer) return i.old;
+			//HP.change(-1);
+			o.damage();
 			if (!o.hitPlayer) return i.old;
-			HP.change(-1);
 		}
 		if (o.type == "portal") {
 			o.destroy();
 			o.prop.tp();
 		}
+		if (o.type == "trigger") {
+			o.trig();
+		}
 	});
+	await loadAllItems();
+	ALLITEMS["Bento Bomb"]["counter"] = 100;
+	INVENTORY.addItem(ALLITEMS["Fire Staff"]);		
+	INVENTORY.addItem(ALLITEMS["Bento Bomb"]);	
+	INVENTORY.addItem(ALLITEMS["Bento Bomb"]);		
+	await globalLoad("art/woodenChest.png");	
+
 	return mainPlayer;
 }

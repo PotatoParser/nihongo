@@ -276,7 +276,6 @@ class entity{
 						//console.log(x, y1, y2, temp);
 						var atImpact = this.collisionEvent[a](this, temp.impact, temp);
 						if (atImpact) {
-							console.log("Vertical");
 							return atImpact;
 						}
 					}
@@ -301,7 +300,6 @@ class entity{
 						//console.log(temp);
 						var atImpact = this.collisionEvent[a](this, temp.impact, temp);
 						if (atImpact) {
-							console.log("Horizontal");
 							return atImpact;
 						}
 					}
@@ -385,13 +383,17 @@ class entity{
 		this.storedItems.push(item);
 	}
 	addEffect(name, repetition, totalDuration, effectDuring, effectAfter){
-		this.effects[name] = new effect(repetition, totalDuration, effectDuring, effectAfter);
+		if(this.effects[name] == undefined) this.effects[name] = new effect(repetition, totalDuration, effectDuring, effectAfter);
 	}
 	clearEffect(name) {
 		if(this.effects[name] == undefined) return;
 		clearInterval(this.effects[name].timer);
 		this.effects[name].after();
 		delete this.effects[name];
+	}
+	effectClean(name){
+		if(this.effects[name] == undefined) return;
+		delete this.effects[name];		
 	}
 	clearAllEffects(){
 		for (var key in this.effects) this.clearEffect(key);		
@@ -419,6 +421,9 @@ class enemy extends entity{
 		GOLD+=this.gold;
 		this.destroy();
 		this.addEffect = ()=>{};				
+	}
+	damage(){
+		HP.change(-1);
 	}
 }
 class boss extends entity{
@@ -947,5 +952,66 @@ class orb extends entity {
 		super(ENTITY, COLLISION, image, 0, 0, hitWidth, hitHeight, offsetX, offsetY, width, height);
 		this.x = reference.x+reference.hit.offWidth/2-this.hit.offWidth/2;
 		this.y = reference.y+reference.hit.offHeight/2-this.hit.offHeight/2;		
+	}
+}
+class chest extends entity {
+	constructor(room, x, y){
+		super(room.entities, room.collision, ["art/woodenChest.png"], x, y, false, false, false, false, SCALE,SCALE);	
+		this.type = "chest";
+		this.hitbox(0.125*SCALE, 0.125*SCALE, 0.75*SCALE, 0.75*SCALE);	
+	}
+}
+
+class gate extends entity {
+	constructor(room, x, y, image){
+		super(room.entities, room.collision, [image], x, y, false, false, false, false, SCALE,SCALE);	
+		this.type = "gate";
+		this.hitbox(0, 0, SCALE, SCALE);	
+	}
+}
+class trigger extends entity {
+	constructor(entity, collision, x,y, width, height, letter, trig){
+		super(entity, collision, null, x, y, false, false, false, false, width, height);
+		this.still = true;
+		this.speed = 0;
+		this.img = null;
+		this.hitbox(letter);
+		this.type = "trigger";
+		this.trig = trig;
+	}
+	hitbox(letter){
+		this.colArea.x = [];
+		this.colArea.y = [];
+		var tempX = this.x;
+		var tempY = this.y;			
+		var tempWidth = this.hit.offWidth;
+		var tempHeight = this.hit.offHeight;
+		switch(letter) {
+			case "N":
+				this.addCollision(tempX, tempY, tempHeight, "y");
+				this.addCollision(tempX, tempY+tempHeight, tempWidth, "x");
+				this.addCollision(tempX+tempWidth, tempY, tempHeight, "y");
+				break;
+			case "W":
+				this.addCollision(tempX, tempY, tempWidth, "x");
+				this.addCollision(tempX, tempY+tempHeight, tempWidth, "x");
+				this.addCollision(tempX+tempWidth, tempY, tempHeight, "y");
+				break;
+			case "S":
+				this.addCollision(tempX, tempY, tempWidth, "x");
+				this.addCollision(tempX, tempY, tempHeight, "y");
+				this.addCollision(tempX+tempWidth, tempY, tempHeight, "y");
+				break;
+			case "E":
+				this.addCollision(tempX, tempY, tempWidth, "x");
+				this.addCollision(tempX, tempY, tempHeight, "y");
+				this.addCollision(tempX, tempY+tempHeight, tempWidth, "x");
+				break;
+			default: break;
+		}
+		/*this.addCollision(tempX, tempY, tempWidth, "x");
+		this.addCollision(tempX, tempY, tempHeight, "y");
+		this.addCollision(tempX, tempY+tempHeight, tempWidth, "x");
+		this.addCollision(tempX+tempWidth, tempY, tempHeight, "y");*/
 	}
 }

@@ -19,9 +19,44 @@ var ALGORITHMS = {
 		var temp = rand(1,15);
 		var temp2 = rand(1,15);		
 		c.moveTo(temp*SCALE, temp2*SCALE);			
+	},
+	slimeMove: (c)=>{
+		if (!c.prop["time"]) {
+			c.prop["time"] = true;
+			c.moveTo(c.x+3*rand(-SCALE, SCALE), c.y+3*rand(-SCALE, SCALE)+false);
+			setTimeout(()=>{c.prop["time"] = false;}, c.speed*rand(50, 100));
+		}
+	},
+	slimeTarget: (c)=>{
+		if (!c.prop["time"]) {
+			c.prop["time"] = true;
+			c.moveTo(c.x+3*rand(MAINPLAYER.x < c.x ? -SCALE : 0, MAINPLAYER.x < c.x ? 0 : SCALE), c.y+3*rand(MAINPLAYER.y < c.y ? -SCALE : 0, MAINPLAYER.y < c.y ? 0 : SCALE),false);
+			setTimeout(()=>{c.prop["time"] = false;}, c.speed*rand(100, 200));
+		}
+	},
+	blueSlime: (c)=>{
+		if (!c.prop["time"]) {
+			c.prop["time"] = true;
+			c.moveTo(c.x+3*rand(MAINPLAYER.x < c.x ? -SCALE : 0, MAINPLAYER.x < c.x ? 0 : SCALE), c.y+3*rand(MAINPLAYER.y < c.y ? -SCALE : 0, MAINPLAYER.y < c.y ? 0 : SCALE),false);
+			setTimeout(()=>{c.prop["time"] = false;}, c.speed*rand(50, 100));
+		}
+	},	
+	afkSlime: (c)=>{
+		if (!c.prop["time"]) {
+			c.prop["time"] = true;
+			if (entityDistance(c, MAINPLAYER) < SCALE*2) c.moveTo(c.x+3*(MAINPLAYER.x < c.x ? -SCALE : SCALE), c.y+3*(MAINPLAYER.y < c.y ? -SCALE : SCALE), false);
+			else c.moveTo(c.x+3*rand(-SCALE, SCALE), c.y+3*rand(-SCALE, SCALE)+false);
+			setTimeout(()=>{c.prop["time"] = false;}, c.speed*rand(100, 300));
+		}
 	}
 
 }
+var testDummy = (roomInfo, image)=>{	
+	var e = new enemy(roomInfo.entities, roomInfo.collision, [image], 7*SCALE, 7*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
+	e.setHP(10);
+	e.setSpeed(0);
+	e.hitbox(true);
+}	
 function dealDamage(damage){
 	return (c, o, i)=>{
 		if(o.type == "wall" || o.type == "room") c.destroy();
@@ -227,6 +262,322 @@ async function level5(){
 	twoFace.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});		
 	roomData[0][0].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);				
 }
+
+async function level8(){
+	await globalLoad("art/woodenChest.png");
+	var allRooms = [["SE", "WE", "W"],
+					["NS", "E", "WS"],
+					["NE", "WE", "NW"]];
+	var roomData = await levelGen(allRooms, "lvl8");
+	linkLevels(allRooms, roomData);
+	//roomData[0][2].start(11*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 7*SCALE);	
+	roomData[1][1].start(11*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 7*SCALE);
+	MAINPLAYER.setSpeed(10);
+	var CHEST = new chest(roomData[1][1], 7*SCALE, 7*SCALE);
+	await exitPortal(roomData[1][1], SCALE, 7*SCALE, ()=>{roomData[1][1].unload(); level9();});
+}
+async function level9(){
+	LEVEL = 9;
+	var allRooms = [["SE", "W"],
+					["NS", null],
+					["NE", "WS"],
+					[null, "NS"],
+					["E", "NW"]];
+	await globalLoad("art/woodenChest.png", "lvl9/redSlime.png", "lvl9/whiteSlime.png", "lvl9/blackSlime.png", "lvl9/blueSlime.png", "lvl9/whiteSlimeMini.png", "lvl9/blueSlimeMini.png");
+	var roomData = await levelGen(allRooms, "lvl9");
+	linkLevels(allRooms, roomData);
+	var CHEST = new chest(roomData[0][1], 7*SCALE, 7*SCALE);
+	var redSlime = (roomInfo, count)=>{	
+		for (var i = 0; i < count; i++) {
+			let e = new enemy(roomInfo.entities, roomInfo.collision, ["lvl9/redSlime.png"], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
+			e.addAlgorithm(ALGORITHMS.slimeTarget);
+			e.setHP(100);
+			e.damage = ()=>{
+				HP.change(-1);
+				MAINPLAYER.addEffect("Bleeding", 5, 5000, ()=>{HP.change(-1);}, false);
+			}
+			e.hitPlayer = false;
+			e.setSpeed(15);
+			e.hitbox(true);
+			e.oncollision((c, o, i)=>{
+				if(o.type == "wall" || o.type == "room") {
+					c.stopMoving();
+				} else if (o.type == "player") {
+					c.damage();
+					return i.old;
+				}
+			});
+			e.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});			
+		}
+	};
+	var blackSlime = (roomInfo, count)=>{	
+		for (var i = 0; i < count; i++) {
+			let e = new enemy(roomInfo.entities, roomInfo.collision, ["lvl9/blackSlime.png"], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
+			e.addAlgorithm(ALGORITHMS.afkSlime);
+			e.setHP(200);
+			e.damage = ()=>{
+				if (!e.prop["damage"]) {
+					e.prop["damage"] = true;
+					HP.change(-10);
+					var before = MAINPLAYER.getSpeed()+0;
+					MAINPLAYER.changeSpeed(-before);
+					MAINPLAYER.addEffect("Stunned", 1, 3000, ()=>{}, ()=>{MAINPLAYER.changeSpeed(before); MAINPLAYER.effectClean("Stunned")});
+					setTimeout(()=>{e.prop["damage"] = false}, 1000);
+				}
+			}
+			e.hitPlayer = false;
+			e.setSpeed(15);
+			e.hitbox(true);
+			e.oncollision((c, o, i)=>{
+				if(o.type == "wall" || o.type == "room") {
+					c.stopMoving();
+				} else if (o.type == "player") {
+					c.damage();
+					return i.old;
+				}
+			});
+			e.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});			
+		}
+	};	
+	var whiteSlime = (roomInfo, count)=>{	
+		for (var i = 0; i < count; i++) {
+			let e = new enemy(roomInfo.entities, roomInfo.collision, ["lvl9/whiteSlime.png"], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
+			e.addAlgorithm(ALGORITHMS.blueSlime);
+			e.setHP(200);
+			e.damage = ()=>{
+				HP.change(-1);
+			}
+			e.death = ()=>{
+				GOLD+=e.gold;
+				for (let k = 0; k < 2; k++) {
+					let m = new enemy(roomInfo.entities, roomInfo.collision, ["lvl9/whiteSlimeMini.png"], e.x+SCALE*rand(-1,1), e.y+SCALE*rand(-1,1), 24/64*SCALE, 16/64*SCALE, 20/64*SCALE, 47/64*SCALE, SCALE, SCALE);
+					m.addAlgorithm(ALGORITHMS.slimeTarget);
+					m.setHP(30);
+					m.damage = ()=>{
+						HP.change(-1);
+					}
+					m.hitPlayer = false;
+					m.setSpeed(8);
+					m.hitbox(true);
+					m.oncollision((c, o, i)=>{
+						if(o.type == "wall" || o.type == "room") {
+							c.stopMoving();
+						} else if (o.type == "player") {
+							c.damage();
+							return i.old;
+						}
+					});
+					m.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});			
+				}
+				e.destroy();				
+			}
+			e.hitPlayer = false;
+			e.setSpeed(7);
+			e.hitbox(true);
+			e.oncollision((c, o, i)=>{
+				if(o.type == "wall" || o.type == "room") {
+					c.stopMoving();
+				} else if (o.type == "player") {
+					c.damage();
+					return i.old;
+				}
+			});
+			e.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});			
+		}
+	};	
+	var blueSlime = (roomInfo, count)=>{
+		for (var i = 0; i < count; i++) {
+			let e = new enemy(roomInfo.entities, roomInfo.collision, ["lvl9/blueSlime.png"], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
+			e.addAlgorithm(ALGORITHMS.slimeMove);
+			e.setHP(100);
+			e.damage = ()=>{
+				HP.change(-1);
+			}
+			e.death = ()=>{
+				GOLD+=e.gold;
+				for (let k = 0; k < 4; k++) {
+					let m = new enemy(roomInfo.entities, roomInfo.collision, ["lvl9/blueSlimeMini.png"], e.x+SCALE*rand(-1,1), e.y+SCALE*rand(-1,1), 24/64*SCALE, 16/64*SCALE, 20/64*SCALE, 47/64*SCALE, SCALE, SCALE);
+					m.addAlgorithm(ALGORITHMS.blueSlime);
+					m.setHP(30);
+					m.damage = ()=>{
+						MP.change(-5);
+					}
+					m.hitPlayer = false;
+					m.setSpeed(14);
+					m.hitbox(true);
+					m.oncollision((c, o, i)=>{
+						if(o.type == "wall" || o.type == "room") {
+							c.stopMoving();
+						} else if (o.type == "player") {
+							c.damage();
+							return i.old;
+						}
+					});
+					m.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});			
+				}
+				e.destroy();				
+			}
+			e.hitPlayer = false;
+			e.setSpeed(7);
+			e.hitbox(true);
+			e.oncollision((c, o, i)=>{
+				if(o.type == "wall" || o.type == "room") {
+					c.stopMoving();
+				} else if (o.type == "player") {
+					c.damage();
+					return i.old;
+				}
+			});
+			e.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});			
+		}
+	};
+	//roomData[2][0].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);
+	MAINPLAYER.setSpeed(10);	
+	var slimeRoom = (room, max)=>{
+		var maxSlimes = max;
+		var counter = 0;
+		var random = [1,1,1,1,1,2,2,2,3,3,4,4];
+		for (let i = 0; i < max; i++) {
+			let temp = random[rand(0, random.length-1)];
+			switch(temp) {
+				case 1: whiteSlime(room,1); break;
+				case 2: redSlime(room,1); break;
+				case 3: blackSlime(room,1); break;
+				case 4: blueSlime(room,1); break;
+				default: break;
+			}
+		}
+	}		
+	slimeRoom(roomData[0][1], 6);
+	slimeRoom(roomData[0][0], 10);
+	slimeRoom(roomData[1][0], 5);
+	slimeRoom(roomData[2][1], 5);
+	slimeRoom(roomData[3][1], 12);
+	slimeRoom(roomData[4][1], 4);
+	roomData[2][0].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);		
+	await exitPortal(roomData[4][0], SCALE, 7*SCALE, ()=>{roomData[4][0].unload(); level10();});
+	//testDummy(roomData[2][0], "lvl9/redSlime.png");
+
+}
+
+async function level10(){
+	var allRooms = [["None"]];
+	var roomData = await levelGen(allRooms, "lvl10");
+	linkLevels(allRooms, roomData);
+	roomData[0][0].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);
+	await exitPortal(roomData[0][0], 7*SCALE, 14*SCALE, ()=>{roomData[0][0].unload(); level11();});
+}
+
+async function level11(){
+	var allRooms = [["SE", "WSE", "WS"],
+					["NS", "NS", "NS"],
+					["NE", "NWE", "NW"]];
+	await globalLoad("lvl11/tiles/gate.png", "lvl11/tiles/gate2.png", "lvl11/tiles/gate3.png",
+					"lvl11/boss1.png", "lvl11/boss1Back.png", "lvl11/boss2.png", "lvl11/boss2Back.png", "lvl11/boss3.png", "lvl11/boss3Back.png");
+	var roomData = await levelGen(allRooms, "lvl11");
+	linkLevels(allRooms, roomData);
+	MAINPLAYER.setSpeed(10);
+	var CHEST1 = new chest(roomData[1][0], 7*SCALE, 7*SCALE);
+	var CHEST2 = new chest(roomData[1][2], 7*SCALE, 7*SCALE);
+	var GATE1 = new gate(roomData[1][1], 7*SCALE, SCALE, "lvl11/tiles/gate.png");
+	var GATE2 = new gate(roomData[0][0], 14*SCALE, 7*SCALE, "lvl11/tiles/gate2.png");	
+	var GATE3 = new gate(roomData[0][2], 0, 7*SCALE, "lvl11/tiles/gate3.png");	
+	var completed = [false,false,false];	
+	//GATE1.destroy();
+	var openGates = (num)=>{
+		completed[num] = true;
+		for (let i = 0; i < completed.length; i++) {
+			if (!completed[i]) return;
+		}
+		GATE1.destroy();
+		GATE2.destroy();
+		GATE3.destroy();
+	}
+	var trigger1 = new trigger(roomData[1][1].entities, roomData[1][1].collision, 7*SCALE, 13*SCALE, SCALE, SCALE, "S", ()=>{
+		trigger1.destroy();
+		var SOUTH = new gate(roomData[1][1], 7*SCALE, 14*SCALE, "lvl11/tiles/gate.png");
+		var boss1 = new enemy(roomData[1][1].entities, roomData[1][1].collision, ["lvl11/boss1.png", "lvl11/boss1Back.png"], 7*SCALE, 7*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
+		boss1.death = ()=>{
+			GOLD+=100;
+			boss1.destroy();
+			SOUTH.destroy();
+			openGates(0);
+		}
+	});
+	var trigger2 = new trigger(roomData[2][0].entities, roomData[2][0].collision, 13*SCALE, 7*SCALE, SCALE, SCALE, "E", ()=>{
+		trigger2.destroy();
+		var EAST = new gate(roomData[2][0], 14*SCALE, 7*SCALE, "lvl11/tiles/gate2.png");
+		var NORTH = new gate(roomData[2][0], 7*SCALE, SCALE, "lvl11/tiles/gate.png");
+		var boss2 = new enemy(roomData[2][0].entities, roomData[2][0].collision, ["lvl11/boss2.png", "lvl11/boss2Back.png"], 7*SCALE, 7*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
+		boss2.death = ()=>{
+			GOLD+=100;
+			boss2.destroy();
+			EAST.destroy();
+			NORTH.destroy();
+			openGates(1);			
+		}
+	});
+	var trigger3 = new trigger(roomData[2][2].entities, roomData[2][2].collision, SCALE, 7*SCALE, SCALE, SCALE, "W", ()=>{
+		trigger3.destroy();
+		var WEST = new gate(roomData[2][2], 0, 7*SCALE, "lvl11/tiles/gate3.png");
+		var NORTH = new gate(roomData[2][2], 7*SCALE, SCALE, "lvl11/tiles/gate.png");	
+		MAINPLAYER.tp(MAINPLAYER.x+SCALE);
+		var boss3 = new enemy(roomData[2][2].entities, roomData[2][2].collision, ["lvl11/boss3.png", "lvl11/boss3Back.png"], 7*SCALE, 7*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
+		boss3.death = ()=>{
+			GOLD+=100;
+			boss3.destroy();
+			WEST.destroy();
+			NORTH.destroy();
+			openGates(2);			
+		}
+	});		
+	//GATE2.destroy();
+	//GATE3.destroy();
+	await exitPortal(roomData[0][1], 7*SCALE, 2*SCALE, ()=>{roomData[0][1].unload(); level12();});
+
+	roomData[2][1].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);	
+
+
+}
+
+async function level12(){
+	var allRooms = [["E", "WSE", "W"],
+					["SE", "NW", "S"],
+					["NE", "WE", "NW"]];
+	var roomData = await levelGen(allRooms, "lvl12");
+	linkLevels(allRooms, roomData);
+	var CHEST = new chest(roomData[0][0], 7*SCALE, 7*SCALE);
+	await exitPortal(roomData[0][2], 13*SCALE, 7*SCALE, ()=>{roomData[0][2].unload(); level13();});		
+	roomData[2][1].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 7*SCALE+(SCALE-MAINPLAYER.hit.offHeight)/2);			
+}
+
+async function level13(){
+	var allRooms = [[null, "S", null, null],
+					[null, "NSE", "WS", null],
+					["E", "NWS", "N", null],
+					[null, "NSE", "WE", "W"],
+					[null, "N", null, null]];
+	var roomData = await levelGen(allRooms, "lvl13");
+	linkLevels(allRooms, roomData);
+	await exitPortal(roomData[0][1], 7*SCALE, 2*SCALE, ()=>{roomData[0][1].unload(); level14();});			
+	roomData[4][1].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);		
+}
+async function level14(){
+	var allRooms = [[null, "S", null],
+					["E", "NWSE", "W"],
+					[null, "N", null]];
+	var roomData = await levelGen(allRooms, "lvl14");
+	linkLevels(allRooms, roomData);
+	//await exitPortal(roomData[0][2], 13*SCALE, 7*SCALE, ()=>{roomData[0][2].unload(); level15();});			
+	roomData[1][1].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);				
+}
+async function level15(){
+	var allRooms = [["None"]];
+	var roomData = await levelGen(allRooms, "lvl15");
+	linkLevels(allRooms, roomData);	
+	roomData[0][0].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);
+}
+
 /*
 TEMPLATE||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
 
@@ -534,19 +885,11 @@ async function loadAllItems(){
 				else if(o.type == "enemy"){
 					c.destroy();
 					if (o.hp > 0) {
-						o.hp-=LEVEL*3;
+						o.updateHP(-LEVEL*3); 
 						o.clearEffect("burning");
 						o.addEffect("burning", 5, 5000, ()=>{
-							o.hp-=LEVEL; 
-							if (o.hp <= 0) {
-								GOLD+=o.gold;
-								o.destroy();
-							}
+							o.updateHP(-LEVEL); 
 						}, false);
-					}
-					if (o.hp <= 0) {
-						GOLD+=o.gold;
-						o.destroy();
 					}
 				} else return i.old;
 			});

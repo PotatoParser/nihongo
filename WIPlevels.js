@@ -134,7 +134,7 @@ async function level14(){
 //level14();
 async function level15(){
 	var allRooms = [["None"]];
-	var roomData = await levelGen(allRooms, "lvl5");
+	var roomData = await levelGen(allRooms, "lvl15");
 	linkLevels(allRooms, roomData);
 
 }
