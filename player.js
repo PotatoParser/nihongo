@@ -54,6 +54,10 @@ const PLAYER = async ()=>{
 			if (!o.hitPlayer) return i.old;
 			HP.change(-1);
 		}
+		if (o.type == "portal") {
+			o.destroy();
+			o.prop.tp();
+		}
 	});
 	return mainPlayer;
 }

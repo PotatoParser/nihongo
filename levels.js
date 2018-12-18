@@ -35,6 +35,13 @@ function dealDamage(damage){
 		} else return i.old;
 	};
 }
+async function exitPortal(room, x, y, nextFunc){
+	await globalLoad("art/portal.png");	
+	var temp = new entity(room.entities, room.collision, ["art/portal.png"], x, y, false, false, false, false, SCALE,SCALE);	
+	temp.type = "portal";
+	temp.hitbox(true);	
+	temp.prop["tp"] = nextFunc;
+}
 async function level1(){
 	LEVEL = 1;
 	await loadAllItems();
@@ -103,6 +110,7 @@ async function level1(){
 	randEnemy(roomData[0][1], 3);
 	randEnemy(roomData[1][0], 3);
 	randEnemy(roomData[2][1], 3);
+	await exitPortal(roomData[0][2], 7*SCALE, 2*SCALE, ()=>{roomData[0][2].unload(); level5();});
 	//testDummy(roomData[0][0], 1);
 }
 
@@ -110,13 +118,26 @@ async function level5(){
 	LEVEL = 5;
 	await loadAllItems();
 	INVENTORY.addItem(ALLITEMS["Fire Staff"]);	
-	await globalLoad("art/woodenChest.png", "test.png", "staff.png", "orb.png", "randoRing.png");
+	await globalLoad("art/woodenChest.png", "test.png", "staff.png", "orb.png", 
+		"randoRing.png", "lvl5/heart.png", "lvl5/twoFaceBack.png", "lvl5/boredFace.png", "lvl5/happyFace.png", "lvl5/sadFace.png", "lvl5/funFace.png");
 
 	var allRooms = [["None"]];
 	var roomData = await levelGen(allRooms, "lvl5");
 	linkLevels(allRooms, roomData);
-	var twoFace = new enemy(roomData[0][0].entities, roomData[0][0].collision, ["test.png"], 7*SCALE, 3*SCALE, Math.round(36/48*SCALE), Math.round(40/48*SCALE), 0.125*SCALE, Math.round(6/48*SCALE), SCALE,SCALE);
+	var twoFace = new enemy(roomData[0][0].entities, roomData[0][0].collision, ["lvl5/happyFace.png", "lvl5/sadFace.png", "lvl5/funFace.png", "lvl5/twoFaceBack.png", "lvl5/boredFace.png"], 7*SCALE, 3*SCALE, Math.round(34/64*SCALE), Math.round(64/64*SCALE), 11/48*SCALE, 0, SCALE,SCALE);
 	twoFace.addAlgorithm(ALGORITHMS.randMove);
+	var timer = setInterval(()=>{
+		console.log("start");
+		let temp = ["happy", "sad", "excited", "bored", "happy", "sad", "excited", "happy"];
+		expressions[temp[rand(0, temp.length-1)]]();
+	}, 5000);		
+	twoFace.death = ()=>{
+		GOLD+=twoFace.gold;
+		twoFace.destroy();
+		twoFace.addEffect = ()=>{};
+		twoFace.clearAllEffects();
+		clearInterval(timer);
+	}
 	twoFace.setHP(300);
 	twoFace.setSpeed(4);
 	twoFace.hitbox(true);
@@ -127,15 +148,24 @@ async function level5(){
 			HP.change(-3);
 		}
 	});
+	var currentFace = 0;
+	twoFace.ony = (obj, y)=>{
+		if (y < obj.y) {
+			obj.index = 3;
+		} else {
+			obj.index = currentFace;
+		}
+	}
 	var expressions = {
 		happy: ()=>{
 			twoFace.clearAllEffects();
+			currentFace = 0;
 			twoFace.addEffect("HappyTime", 0, 1000, ()=>{
 				let paths = [[0,1], [-1,0], [1,0], [0,-1]]
 				for (let a = 0; a < paths.length; a++) {
 					for (let i = 0; i < 3; i++) {
 						setTimeout(()=>{
-							let temp = new orb(twoFace, ["orb.png"], 8, 8, 4, 4);
+							let temp = new orb(twoFace, ["lvl5/heart.png"], 8, 8, 4, 4);
 							temp.oncollision((c, o, i)=>{
 								if(o.type == "wall" || o.type == "room") c.destroy();
 								else if(o.type == "player"){
@@ -152,6 +182,7 @@ async function level5(){
 		},
 		sad: ()=>{
 			twoFace.clearAllEffects();
+			currentFace = 1;
 			twoFace.addEffect("SadTime", 0, 2000, ()=>{
 				MAINPLAYER.changeSpeed(-1);
 				MAINPLAYER.addEffect("Saddened", 1, 1000, false, ()=>{MAINPLAYER.changeSpeed(1);});
@@ -159,24 +190,30 @@ async function level5(){
 		},
 		excited: ()=>{
 			twoFace.clearAllEffects();
+			currentFace = 2;
 			let paths = [[0,1], [-1,0], [1,0], [0,-1], [1,1], [-1,-1], [1,-1], [-1,1]];
-				for (let a = 0; a < paths.length; a++) {
-					setTimeout(()=>{
-						let temp = new orb(twoFace, ["orb.png"], 8, 8, 4, 4);
-						temp.oncollision((c, o, i)=>{
-							if(o.type == "wall" || o.type == "room") c.destroy();
-							else if(o.type == "player"){
-								c.destroy();
-								HP.change(-5);
-							} else return i.old;
-						});
-						temp.moveTo(temp.x + paths[a][0],temp.y+paths[a][1], ()=>{});
-						temp.setSpeed(10);
-					}, 200);
-				}	
+			for (let a = 0; a < paths.length; a++) {
+				setTimeout(()=>{
+					let temp = new orb(twoFace, ["lvl5/heart.png"], 8, 8, 4, 4);
+					temp.oncollision((c, o, i)=>{
+						if(o.type == "wall" || o.type == "room") c.destroy();
+						else if(o.type == "player"){
+							c.destroy();
+							HP.change(-5);
+						} else return i.old;
+					});
+					temp.moveTo(temp.x + paths[a][0],temp.y+paths[a][1], ()=>{});
+					temp.setSpeed(10);
+				}, 200);
+			}	
+			twoFace.addEffect("ExcitedTime", 0, 2000, ()=>{
+				twoFace.changeSpeed(2);
+				twoFace.addEffect("Excited", 1, 4000, false, ()=>{twoFace.changeSpeed(-2);});
+			}, false);				
 		},
 		bored: ()=>{
 			twoFace.clearAllEffects();
+			currentFace = 4;
 			twoFace.updateHP = (value)=>{
 				twoFace.setHP(twoFace.hp + value*2);
 			}
@@ -188,11 +225,7 @@ async function level5(){
 		}
 	}
 	twoFace.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});		
-	roomData[0][0].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);
-	setInterval(()=>{
-		let temp = ["happy", "sad", "excited", "bored", "happy", "sad", "excited", "bored", "happy"];
-		expressions[temp[rand(0, temp.length-1)]]();
-	}, 5000);					
+	roomData[0][0].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);				
 }
 /*
 TEMPLATE||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||

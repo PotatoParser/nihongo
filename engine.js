@@ -186,6 +186,8 @@ class entity{
 		this.type = null;
 		this.storedItems = [];
 		this.effects = {};
+		this.onx = false;
+		this.ony = false;
 	}
 	draw(ctx){
 		//console.log(this.img, this, JSON.parse(JSON.stringify(IMAGES)));
@@ -197,11 +199,13 @@ class entity{
 		if (this.movehit) this.hitbox();
 	}
 	moveX(newX){
+		if (this.onx) this.onx(this, newX);
 		if (newX < this.x) this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX);
 		else this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX+this.hit.offWidth)-this.hit.offWidth;	
 		if (this.movehit) this.hitbox();			
 	}			
 	moveY(newY){
+		if (this.ony) this.ony(this, newY);
 		if (isNaN(newY)) {
 			console.log(newY, "ZERO1");
 			debugger;
@@ -414,6 +418,7 @@ class enemy extends entity{
 	death(){
 		GOLD+=this.gold;
 		this.destroy();
+		this.addEffect = ()=>{};				
 	}
 }
 class boss extends entity{
@@ -426,6 +431,7 @@ class boss extends entity{
 	death(){
 		GOLD+=this.gold;
 		this.destroy();
+		this.addEffect = ()=>{};		
 	}	
 }
 // offset of 8, hitHeight of 
