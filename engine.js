@@ -200,12 +200,14 @@ class entity{
 		if (this.movehit) this.hitbox();
 	}
 	moveX(newX){
+		if (!this.alive()) return;
 		if (this.onx) this.onx(this, newX);
 		if (newX < this.x) this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX);
 		else this.x = this.checkAllX(this.y, this.hit.offHeight, this.x, newX+this.hit.offWidth)-this.hit.offWidth;	
 		if (this.movehit) this.hitbox();			
 	}			
 	moveY(newY){
+		if (!this.alive()) return;		
 		if (this.ony) this.ony(this, newY);
 		if (isNaN(newY)) {
 			console.log(newY, "ZERO1");

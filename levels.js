@@ -734,7 +734,7 @@ async function level11(){
 				if (temp > 30)
 					c.moveTo(c.x+3*rand(MAINPLAYER.x < c.x ? -SCALE : 0, MAINPLAYER.x < c.x ? 0 : SCALE), c.y+3*rand(MAINPLAYER.y < c.y ? -SCALE : 0, MAINPLAYER.y < c.y ? 0 : SCALE));
 				else 
-					c.moveTo(c.x+3*rand(-SCALE, SCALE), 3*rand(-SCALE, SCALE));	
+					c.moveTo(c.x+3*rand(-SCALE, SCALE), c.y+3*rand(-SCALE, SCALE));	
 			});			
 			e.hitPlayer = false;
 			e.setSpeed(3);
@@ -773,13 +773,83 @@ async function level12(){
 }
 
 async function level13(){
+	LEVEL = 13;
 	var allRooms = [[null, "S", null, null],
 					[null, "NSE", "WS", null],
 					["E", "NWS", "N", null],
 					[null, "NSE", "WE", "W"],
 					[null, "N", null, null]];
+	await globalLoad("lvl13/yakuza.png", "lvl13/yakuzaBack.png", "lvl13/bullet.png");			
 	var roomData = await levelGen(allRooms, "lvl13");
+	var spawn = (roomInfo, count)=>{
+		for (var i = 0; i < count; i++) {
+			let e = new enemy(roomInfo.entities, roomInfo.collision, ["lvl13/yakuza.png", "lvl13/yakuzaBack.png"], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(48/64*SCALE), Math.round(48/64*SCALE), 0, 0, SCALE, SCALE);
+			e.addAlgorithm((c)=>{
+				if (c.moveToLoop) return;
+				let temp = entityDistance(MAINPLAYER, e);			
+				if (temp < SCALE*4) {
+					e.setSpeed(5);					
+					c.moveTo(c.x+3*rand(MAINPLAYER.x < c.x ? -SCALE : 0, MAINPLAYER.x < c.x ? 0 : SCALE), c.y+3*rand(MAINPLAYER.y < c.y ? -SCALE : 0, MAINPLAYER.y < c.y ? 0 : SCALE));
+				}
+				else {
+					e.setSpeed(3);					
+					c.moveTo(c.x+3*rand(-SCALE, SCALE), c.y+3*rand(-SCALE, SCALE));
+				}
+			});	
+			e.ony = (obj, y)=>{
+				if (y < obj.y)
+					obj.index = 1;
+				else obj.index = 0;
+			}				
+			e.addAlgorithm((c)=>{
+				if (!c.prop["timer"] && entityDistance(MAINPLAYER, e) >= SCALE*4) {
+					c.prop["timer"] = true;
+					for (let k = 0; k < 2; k++) {
+						setTimeout(()=>{
+							let bolt = new orb(e, ["lvl13/bullet.png"], 8, 8, 0, 0);
+							bolt.oncollision(CT.orbcol);
+							bolt.damage = ()=>{HP.change(-5);};
+							bolt.setSpeed(4);
+							bolt.moveTo(MAINPLAYER.x+rand(-SCALE, SCALE), MAINPLAYER.y+rand(-SCALE, SCALE), ()=>{});
+						}, k*300);
+					}
+					setTimeout(()=>{c.prop["timer"] = false;}, rand(2000,4000));
+				}
+			});
+			e.setHP(150);
+			e.damage = ()=>{
+				if (!e.prop["damage"]) {
+					e.prop["damage"] = true;
+					HP.change(-5);
+					setTimeout(()=>{e.prop["damage"] = false}, 1000);
+				}
+			}		
+			e.setSpeed(3);
+			e.hitbox(true);
+			e.oncollision((c, o, i)=>{
+				if(o.type == "wall" || o.type == "room")
+					c.stopMoving();
+				if (o.type == "player") {
+					c.damage();
+					c.stopMoving();
+				}
+			});
+			e.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});			
+		}
+	}
 	linkLevels(allRooms, roomData);
+	spawn(roomData[0][1], rand(2,3));
+	spawn(roomData[1][1], rand(3,5));
+	spawn(roomData[2][1], rand(5, 7));
+	spawn(roomData[2][0], rand(2,3));
+	spawn(roomData[1][2], rand(3,5));
+	spawn(roomData[2][2], rand(2,3));
+	spawn(roomData[3][1], rand(2, 3));
+	spawn(roomData[3][2], rand(1, 2));
+	spawn(roomData[3][3], rand(2, 3));
+	var CHEST1 = new chest(roomData[2][2], 7*SCALE, 7*SCALE);
+	var CHEST2 = new chest(roomData[3][3], 7*SCALE, 7*SCALE);
+
 	await exitPortal(roomData[0][1], 7*SCALE, 2*SCALE, ()=>{roomData[0][1].unload(); level14();});			
 	roomData[4][1].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);		
 }

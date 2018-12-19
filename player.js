@@ -17,7 +17,7 @@ const PLAYER = async ()=>{
 		if(o.type == "wall" && o.prop["room"] != undefined) o.prop["room"].changeRoom(direction);
 	});
 	//mainPlayer.speed = 4;	
-	mainPlayer.setSpeed(2);		
+	mainPlayer.setSpeed(4);		
 	mainPlayer.onCursorMove("face", (mouse, playerData)=>{
 		if (playerData.moving()) return;
 		if (mouse.y-32 < mainPlayer.y) playerData.index = 1;
