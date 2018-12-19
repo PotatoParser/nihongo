@@ -188,6 +188,7 @@ class entity{
 		this.effects = {};
 		this.onx = false;
 		this.ony = false;
+		this.status = "alive";
 	}
 	draw(ctx){
 		//console.log(this.img, this, JSON.parse(JSON.stringify(IMAGES)));
@@ -314,7 +315,11 @@ class entity{
 		delete this.ENTITY[this.id];
 		delete this.COLLISION[this.id];	
 		this.clearAllEffects();
+		this.status = "dead";
 		delete this;
+	}
+	alive(){
+		return this.status === "alive";
 	}
 	addCollision(x, y, distance, direction){
 		this.COLLISION[this.id] = this;
@@ -401,6 +406,12 @@ class entity{
 	includesEffect(name) {
 		return this.effects[name] != undefined;
 	}
+	centerX(){
+		return this.x+this.hit.offWidth/2;
+	}
+	centerY(){
+		return this.y+this.hit.offHeight/2;
+	}
 }	
 class collisionEntity extends entity{
 	constructor(entity, collision, boxX, boxY, boxHeight, boxWidth){
@@ -416,11 +427,13 @@ class enemy extends entity{
 		this.type = "enemy";
 		this.gold = 1;
 		this.hitPlayer = true;
+		this.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});
 	}
 	death(){
 		GOLD+=this.gold;
 		this.destroy();
-		this.addEffect = ()=>{};				
+		this.addEffect = ()=>{};
+		this.status = "dead";				
 	}
 	damage(){
 		HP.change(-1);
@@ -953,6 +966,14 @@ class orb extends entity {
 		this.x = reference.x+reference.hit.offWidth/2-this.hit.offWidth/2;
 		this.y = reference.y+reference.hit.offHeight/2-this.hit.offHeight/2;		
 	}
+	death(){
+		this.destroy();
+		this.addEffect = ()=>{};
+		this.status = "dead";				
+	}
+	damage(){
+		HP.change(-1);
+	}	
 }
 class chest extends entity {
 	constructor(room, x, y){
@@ -1015,3 +1036,34 @@ class trigger extends entity {
 		this.addCollision(tempX+tempWidth, tempY, tempHeight, "y");*/
 	}
 }
+
+var drawCollision = (obj)=>{
+	var xDir = obj.colArea.x;
+	var yDir = obj.colArea.y;
+	for (var i = 0; i < xDir.length; i++) {
+		var temp = xDir[i];
+		testCanvas.ctx.fillStyle = 'red';
+		testCanvas.ctx.fillRect(temp.x-1, temp.y,2, temp.distance);
+	}
+	for (var i = 0; i < yDir.length; i++) {
+		var temp = yDir[i];
+		testCanvas.ctx.fillStyle = 'blue';
+		testCanvas.ctx.fillRect(temp.x, temp.y-1,temp.distance,2);
+	}
+};
+
+var drawDimensions = (obj)=>{
+	var xDir = obj.x;
+	var yDir = obj.y;
+	testCanvas.ctx.fillStyle = 'blue';	
+	testCanvas.ctx.fillRect(obj.x-1, obj.y-obj.hit.offY,2, obj.height);
+	testCanvas.ctx.fillRect(obj.x, obj.y-1,obj.width, 2);
+
+	//testCanvas.ctx.fillRect(obj.x-1+obj.width, obj.y,2, temp.distance);
+
+	/*for (var i = 0; i < yDir.length; i++) {
+		var temp = yDir[i];
+		testCanvas.ctx.fillStyle = 'blue';
+		testCanvas.ctx.fillRect(temp.x, temp.y-1,temp.distance,2);
+	}*/
+};

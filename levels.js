@@ -51,6 +51,24 @@ var ALGORITHMS = {
 	}
 
 }
+
+var CT = {
+	nocol: (c, o, i)=>{
+		if(o.type == "wall" || o.type == "room") {
+			c.stopMoving();
+		} else if (o.type == "player") {
+			c.damage();
+			return i.old;
+		}
+	},
+	orbcol: (c, o, i)=>{
+		if(o.type == "wall" || o.type == "room") c.destroy();
+		else if(o.type == "player"){
+			c.damage();
+			c.death();
+		} else return i.old;
+	}
+}
 var testDummy = (roomInfo, image)=>{	
 	var e = new enemy(roomInfo.entities, roomInfo.collision, [image], 7*SCALE, 7*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
 	e.setHP(10);
@@ -469,11 +487,13 @@ async function level10(){
 }
 
 async function level11(){
+	LEVEL = 11;
 	var allRooms = [["SE", "WSE", "WS"],
 					["NS", "NS", "NS"],
 					["NE", "NWE", "NW"]];
 	await globalLoad("lvl11/tiles/gate.png", "lvl11/tiles/gate2.png", "lvl11/tiles/gate3.png",
-					"lvl11/boss1.png", "lvl11/boss1Back.png", "lvl11/boss2.png", "lvl11/boss2Back.png", "lvl11/boss3.png", "lvl11/boss3Back.png");
+					"lvl11/boss1.png", "lvl11/boss1Back.png", "lvl11/boss2.png", "lvl11/boss2Back.png", "lvl11/boss3.png", "lvl11/boss3Back.png",
+					"lvl11/lily.png", "lvl11/lilyOpened.png", "lvl11/lilyBolt.png", "lvl11/ball.png", "lvl11/boom.png", "lvl11/evil.png");
 	var roomData = await levelGen(allRooms, "lvl11");
 	linkLevels(allRooms, roomData);
 	MAINPLAYER.setSpeed(10);
@@ -486,6 +506,8 @@ async function level11(){
 	//GATE1.destroy();
 	var openGates = (num)=>{
 		completed[num] = true;
+		HP.change(HP.getMax()*0.25);
+		MP.change(MP.getMax()*0.25);		
 		for (let i = 0; i < completed.length; i++) {
 			if (!completed[i]) return;
 		}
@@ -496,7 +518,32 @@ async function level11(){
 	var trigger1 = new trigger(roomData[1][1].entities, roomData[1][1].collision, 7*SCALE, 13*SCALE, SCALE, SCALE, "S", ()=>{
 		trigger1.destroy();
 		var SOUTH = new gate(roomData[1][1], 7*SCALE, 14*SCALE, "lvl11/tiles/gate.png");
-		var boss1 = new enemy(roomData[1][1].entities, roomData[1][1].collision, ["lvl11/boss1.png", "lvl11/boss1Back.png"], 7*SCALE, 7*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
+		var boss1 = new enemy(roomData[1][1].entities, roomData[1][1].collision, ["lvl11/boss1.png", "lvl11/boss1Back.png"], 7*SCALE, 7*SCALE, Math.round(54/64*SCALE), Math.round(60/64*SCALE), 5/64*SCALE, Math.round(2/64*SCALE), SCALE, SCALE);
+		boss1.setHP(666);
+		boss1.ony = (obj, y)=>{
+			if (y < obj.y)
+				obj.index = 1;
+			else obj.index = 0;
+		}		
+		boss1.addAlgorithm((c)=>{
+			if (!c.moveToLoop && !c.prop["timer"]) {
+				c.prop["timer"] = true;
+				c.moveTo(MAINPLAYER.x, MAINPLAYER.y, ()=>{});
+			}
+		});
+		boss1.hitPlayer = false;
+		boss1.oncollision((c,o,i)=>{
+			if(o.type == "wall" || o.type == "room") {
+				c.stopMoving();
+				setTimeout(()=>{c.prop["timer"] = false}, 500);				
+			} else if (o.type == "player") {
+				c.damage();
+				return i.old;
+			}
+			return i.old;
+		});	
+		boss1.setSpeed(15);
+		boss1.hitbox(true);
 		boss1.death = ()=>{
 			GOLD+=100;
 			boss1.destroy();
@@ -508,7 +555,77 @@ async function level11(){
 		trigger2.destroy();
 		var EAST = new gate(roomData[2][0], 14*SCALE, 7*SCALE, "lvl11/tiles/gate2.png");
 		var NORTH = new gate(roomData[2][0], 7*SCALE, SCALE, "lvl11/tiles/gate.png");
-		var boss2 = new enemy(roomData[2][0].entities, roomData[2][0].collision, ["lvl11/boss2.png", "lvl11/boss2Back.png"], 7*SCALE, 7*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
+		var boss2 = new enemy(roomData[2][0].entities, roomData[2][0].collision, ["lvl11/boss2.png", "lvl11/boss2Back.png"], 7*SCALE, 7*SCALE, Math.round(38/64*SCALE), Math.round(57/64*SCALE), 13/64*SCALE, Math.round(6/64*SCALE), SCALE, SCALE);
+		boss2.setHP(666);
+		boss2.setSpeed(4);
+		boss2.hitbox(true);
+		boss2.ony = (obj, y)=>{
+			if (y < obj.y)
+				obj.index = 1;
+			else obj.index = 0;
+		}			
+		boss2.oncollision((c,o)=>{
+			if(o.type == "wall" || o.type == "room")
+				c.stopMoving();
+			if (o.type == "player") {
+				boss2.damage();
+				c.stopMoving();				
+			}
+		});		
+		var touching = (obj)=>{
+			var newDist = distance(obj.x+obj.hit.offWidth/2, obj.y+obj.hit.offHeight/2, MAINPLAYER.x+MAINPLAYER.hit.offWidth/2, MAINPLAYER.y+MAINPLAYER.hit.offHeight/2);
+			if (newDist < 80)
+				return newDist;	
+			return false;
+		}
+		var rings = ()=>{
+			for (let a = 0; a < 30; a++) {
+				setTimeout(()=>{
+					if (!boss2.alive()) return;
+					let temp = new orb(boss2, ["lvl11/ball.png", "lvl11/boom.png"], 20/128*SCALE*2, 20/128*SCALE*2, 54/128*SCALE*2, 54/128*SCALE*2, 2*SCALE, 2*SCALE);
+					temp.moveTo(temp.x + rand(-SCALE*SCALE, SCALE*SCALE), temp.y+rand(-SCALE*SCALE, SCALE*SCALE), ()=>{});
+					temp.damage = (data)=>{
+						let other = touching(temp);
+						HP.change(-Math.floor(SCALE/other*10));
+					};
+					temp.death = ()=>{
+						temp.index = 1;	
+						if (touching(temp)) temp.damage();
+						setTimeout(()=>{
+							temp.destroy();
+						}, 300);							
+						temp.stopMoving();
+						temp.status = "dead";
+					};
+					temp.oncollision((c, o, i)=>{
+						if(o.type == "wall" || o.type == "room") c.death();
+						else if(o.type == "player") c.death();
+						else return i.old;
+					});
+					setTimeout(()=>{
+						if (!temp.alive()) return;
+						temp.death();
+					}, rand(100, 2000));
+					temp.setSpeed(4);
+				}, a*300);
+			}
+		}		
+		boss2.addAlgorithm((c)=>{
+			if (!c.prop["timer"]) {
+				c.prop["timer"] = true;
+				rings();
+				setTimeout(()=>{c.prop["timer"] = false;}, 10000);
+			}
+		});
+		boss2.addAlgorithm(ALGORITHMS.randMove);
+		/*var temp = new enemy(roomData[2][0].entities, roomData[2][0].collision, ["lvl11/ball.png", "lvl11/boom.png"], 9*SCALE, 9*SCALE, 20/128*SCALE*2, 20/128*SCALE*2, 54/128*SCALE*2, 54/128*SCALE*2, 2*SCALE, 2*SCALE);
+		temp.index = 1;
+		temp.hitbox(true);
+		drawCollision(temp);
+		temp.hit.offX = 0;
+		drawDimensions(temp);
+		*/
+				//	let temp = new orb(boss2, ["lvl11/ball.png", "lvl11/boom.png"], 20/128*SCALE, 20/128*SCALE, 54/128*SCALE, 54/128*SCALE, 2*SCALE, 2*SCALE);		
 		boss2.death = ()=>{
 			GOLD+=100;
 			boss2.destroy();
@@ -522,8 +639,76 @@ async function level11(){
 		var WEST = new gate(roomData[2][2], 0, 7*SCALE, "lvl11/tiles/gate3.png");
 		var NORTH = new gate(roomData[2][2], 7*SCALE, SCALE, "lvl11/tiles/gate.png");	
 		MAINPLAYER.tp(MAINPLAYER.x+SCALE);
-		var boss3 = new enemy(roomData[2][2].entities, roomData[2][2].collision, ["lvl11/boss3.png", "lvl11/boss3Back.png"], 7*SCALE, 7*SCALE, Math.round(48/64*SCALE), Math.round(32/64*SCALE), 8/64*SCALE, Math.round(28/64*SCALE), SCALE, SCALE);
+		var boss3 = new enemy(roomData[2][2].entities, roomData[2][2].collision, ["lvl11/boss3.png", "lvl11/boss3Back.png"], 7*SCALE, 7*SCALE, Math.round(24/64*SCALE), Math.round(62/64*SCALE), 20/64*SCALE, Math.round(1/64*SCALE), SCALE, SCALE);
+		boss3.ony = (obj, y)=>{
+			if (y < obj.y)
+				obj.index = 1;
+			else obj.index = 0;
+		}	
+		let spawnLily = (x, y)=>{
+			let lily = new enemy(roomData[2][2].entities, roomData[2][2].collision, ["lvl11/lily.png", "lvl11/lilyOpened.png"], x, y, Math.round(28/64*SCALE), Math.round(16/64*SCALE), 18/64*SCALE, Math.round(36/64*SCALE), SCALE, SCALE);
+			lily.damage = ()=>{};
+			lily.setHP(25);
+			setTimeout(()=>{
+				if (!lily.alive()) return;
+				lily.index = 1;
+				lily.addAlgorithm((c)=>{
+					if (!c.prop["time"]) {
+						c.prop["time"] = true;
+						let bolt = new orb(lily, ["lvl11/lilyBolt.png"], 10, 10, 0, 0);
+						bolt.oncollision(CT.orbcol);
+						bolt.damage = ()=>{HP.change(-5);};
+						bolt.setSpeed(4);
+						bolt.moveTo(MAINPLAYER.x, MAINPLAYER.y, ()=>{});
+						setTimeout(()=>{c.prop["time"] = false;}, 2000);
+					}
+				});
+			}, 4000);
+			lily.hitPlayer = false;
+			lily.setSpeed(5);
+			lily.hitbox(true);
+			lily.oncollision(CT.nocol);
+			return lily;
+			//lily.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});	
+		};
+		boss3.prop["lilies"] = [];
+		boss3.addAlgorithm((c)=>{
+			if (!c.prop["spawn"]) {
+				c.prop["spawn"] = true;
+				c.prop["lilies"].push(spawnLily(c.x, c.y));
+				setTimeout(()=>{c.prop["spawn"] = false;}, rand(800, 1000));
+			}
+		});
+		boss3.addAlgorithm((c)=>{
+			if (!c.prop["toggleMove"]) {
+				c.prop["toggleMove"] = true;
+				var temp = rand(1, 100);
+				if (temp > 60) c.moveTo(c.x+3*rand(MAINPLAYER.x < c.x ? -SCALE : 0, MAINPLAYER.x < c.x ? 0 : SCALE), c.y+3*rand(MAINPLAYER.y < c.y ? -SCALE : 0, MAINPLAYER.y < c.y ? 0 : SCALE),false);
+				else ALGORITHMS.randMove(c);
+				setTimeout(()=>{c.prop["toggleMove"] = false;}, rand(100, 200));				
+			}
+		});
+		boss3.addAlgorithm((c)=>{
+			if (c.hp < 666*0.25) {
+				if (!c.prop["almost"]) {
+					c.prop["almost"] = true;
+					let paths = [[0,1], [-1,0], [1,0], [0,-1], [1,1], [-1,-1], [1,-1], [-1,1]];
+					for (let a = 0; a < paths.length; a++) {
+						setTimeout(()=>{
+							let temp = spawnLily(c.x, c.y);
+							c.prop["lilies"].push(temp);
+						}, 200);
+					}					
+				}
+			}
+		});
+		boss3.setHP(666);
+		boss3.setSpeed(4);
+		boss3.hitbox(true);
+		boss3.oncollision(CT.nocol);
 		boss3.death = ()=>{
+			for (var i = 0; i < boss3.prop.lilies.length; i++)
+				if (boss3.prop.lilies[i].alive()) boss3.prop.lilies[i].destroy();
 			GOLD+=100;
 			boss3.destroy();
 			WEST.destroy();
@@ -531,8 +716,44 @@ async function level11(){
 			openGates(2);			
 		}
 	});		
+	var vortex = (roomInfo, count)=>{	
+		for (var i = 0; i < count; i++) {
+			let e = new enemy(roomInfo.entities, roomInfo.collision, ["lvl11/evil.png"], rand(1,13)*SCALE, rand(2,13)*SCALE, Math.round(48/64*SCALE), Math.round(48/64*SCALE), 0, 0, SCALE, SCALE);
+			e.addAlgorithm(ALGORITHMS.afkSlime);
+			e.setHP(100);
+			e.damage = ()=>{
+				if (!e.prop["damage"]) {
+					e.prop["damage"] = true;
+					HP.change(-5);
+					setTimeout(()=>{e.prop["damage"] = false}, 1000);
+				}
+			}
+			e.addAlgorithm((c)=>{
+				if (c.moveToLoop) return;
+				let temp = rand(0,100);				
+				if (temp > 30)
+					c.moveTo(c.x+3*rand(MAINPLAYER.x < c.x ? -SCALE : 0, MAINPLAYER.x < c.x ? 0 : SCALE), c.y+3*rand(MAINPLAYER.y < c.y ? -SCALE : 0, MAINPLAYER.y < c.y ? 0 : SCALE));
+				else 
+					c.moveTo(c.x+3*rand(-SCALE, SCALE), 3*rand(-SCALE, SCALE));	
+			});			
+			e.hitPlayer = false;
+			e.setSpeed(3);
+			e.hitbox(true);
+			e.oncollision((c, o, i)=>{
+				if(o.type == "wall" || o.type == "room")
+					c.stopMoving();
+				if (o.type == "player") {
+					c.damage();
+					return i.old;
+				}
+			});
+			e.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});			
+		}
+	};		
 	//GATE2.destroy();
 	//GATE3.destroy();
+	vortex(roomData[0][0], rand(5,7));
+	vortex(roomData[0][2], rand(5,7));	
 	await exitPortal(roomData[0][1], 7*SCALE, 2*SCALE, ()=>{roomData[0][1].unload(); level12();});
 
 	roomData[2][1].start(7*SCALE+(SCALE-MAINPLAYER.hit.offWidth)/2, 11*SCALE);	
