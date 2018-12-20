@@ -163,7 +163,7 @@ async function level1(){
 	randEnemy(roomData[0][1], 3);
 	randEnemy(roomData[1][0], 3);
 	randEnemy(roomData[2][1], 3);
-	await exitPortal(roomData[0][2], 7*SCALE, 2*SCALE, ()=>{roomData[0][2].unload(); level5();});
+	await exitPortal(roomData[0][2], 7*SCALE, 2*SCALE, ()=>{roomData[0][2].unload(); level2();});
 	//testDummy(roomData[0][0], 1);
 }
 async function level3(){
@@ -250,7 +250,6 @@ async function level5(){
 		expressions[temp[rand(0, temp.length-1)]]();
 	}, 5000);		
 	twoFace.death = ()=>{
-		GOLD+=10;		
 		GOLD+=twoFace.gold;
 		twoFace.destroy();
 		twoFace.addEffect = ()=>{};
@@ -264,11 +263,12 @@ async function level5(){
 	twoFace.setHP(300);
 	twoFace.setSpeed(4);
 	twoFace.hitbox(true);
+	twoFace.onhitdamage = 5;
 	twoFace.oncollision((c,o)=>{
 		if(o.type == "wall" || o.type == "room") {
 			c.stopMoving();
 		} else if (o.type == "player") {
-			HP.change(-3);
+			c.damage();
 		}
 	});
 	var currentFace = 0;
@@ -290,13 +290,8 @@ async function level5(){
 					for (let i = 0; i < 3; i++) {
 						setTimeout(()=>{
 							let temp = new orb(twoFace, ["lvl5/heart.png"], 8, 8, 4, 4);
-							temp.oncollision((c, o, i)=>{
-								if(o.type == "wall" || o.type == "room") c.destroy();
-								else if(o.type == "player"){
-									c.destroy();
-									HP.change(-5);
-								} else return i.old;
-							});
+							temp.onhitdamage = 5;
+							temp.oncollision(CT.orbcol);
 							temp.moveTo(temp.x + paths[a][0],temp.y+paths[a][1], ()=>{});
 							temp.setSpeed(10);
 						}, i*200);
@@ -321,13 +316,8 @@ async function level5(){
 			for (let a = 0; a < paths.length; a++) {
 				setTimeout(()=>{
 					let temp = new orb(twoFace, ["lvl5/heart.png"], 8, 8, 4, 4);
-					temp.oncollision((c, o, i)=>{
-						if(o.type == "wall" || o.type == "room") c.destroy();
-						else if(o.type == "player"){
-							c.destroy();
-							HP.change(-5);
-						} else return i.old;
-					});
+					temp.onhitdamage = 5;
+					temp.oncollision(CT.orbcol);
 					temp.moveTo(temp.x + paths[a][0],temp.y+paths[a][1], ()=>{});
 					temp.setSpeed(10);
 				}, 200);
