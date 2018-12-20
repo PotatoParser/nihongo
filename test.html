@@ -50,7 +50,9 @@
 		font-family: "Libel Suit", serif; 
 		font-weight: 100;
 		font-style: normal;
-		font-variant: normal;		
+		font-variant: normal;
+		font-size: 26px;
+		color: white;				
 	}
 	img{
 		user-select: none;
@@ -76,6 +78,14 @@
 		user-select: none;
 		border: none;
 		color: white;
+	}
+	.avatar {
+		position: absolute;
+		top: 0px;
+		background: ;
+		background-repeat: no-repeat;
+		background-size: cover;
+		background-position: center; 		
 	}
 </style>
 <div id="FPS">0</div>
@@ -153,7 +163,11 @@
 		}
 	</script>
 	<script src="engine.js"></script>
+	<script src="player.js"></script>
+	<script src="room.js"></script>
+	<script src="levels.js"></script>	
 	<script>
+		var TEXTQUEUE = [];
 		var ENTITY = {};
 		var COLLISION = {};
 		var IMAGES = {};
@@ -190,7 +204,16 @@
 				ENTITY[temp[i]].algorithm();
 			}
 			//console.log("LOL");
-		}				
+		}		
+		async function tester(num) {
+			var temp = JSON.parse(await get("texts.json"));
+			for (var i = 0; i < temp[num].length; i++) {
+				textMake(temp[num][i].j, temp[num][i].image);
+			}
+		}
+		tester(10);
+		//textMake("住めません！クレジットカードがほしいですか。このどろ、みなさんはクレジットカードがあります。あなたがつかってみたいクレジットカードをもらうのがたんかんですよ。", "art/sensei.png");	
+		//textMake("No. I don’t want one.", "art/sensei.png");	
 		/*function rand(min, max) {
 			if (min === max) return max;
 			return Math.round(Math.random()*(max-min) + min);
@@ -218,9 +241,6 @@
 		testLoop(()=>{requestAnimationFrame(update);}, 0);
 		//start();
 	</script>
-	<script src="player.js"></script>
-	<script src="room.js"></script>
-	<script src="levels.js"></script>
 	<script>
 		level5();
 	</script>

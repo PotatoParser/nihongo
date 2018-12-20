@@ -1065,6 +1065,37 @@ class trigger extends entity {
 	}
 }
 
+
+function textMake(text, image){
+	var temp = document.getElementById("text");
+	if (temp) {
+		TEXTQUEUE.push({text: text, image: image});
+		return;
+	} else if (TEXTQUEUE.length == 0) TEXTQUEUE.push({text: text, image: image});
+	var boxing = document.createElement("DIV");
+	boxing.id = "text";
+	document.body.appendChild(boxing);
+	console.log(boxing);
+	var other = document.createElement("DIV");
+	other.classList.add("avatar");
+	mfpp._size(other, SCALE, SCALE);	
+	other.style.background = `url("${image}") 100% 100%`;
+	other.style["background-size"] = "cover";
+	boxing.style.position = "fixed";
+	var txt = document.createElement("DIV");
+	txt.style.position = "absolute";
+	mfpp._position(txt, 0, 64);
+	txt.innerHTML = text;
+	boxing.appendChild(txt);
+	mfpp.position(boxing, (window.innerWidth-15*SCALE)/2+16*SCALE, SCALE, SCALE*7, window.innerHeight-SCALE);
+	boxing.appendChild(other);
+	boxing.onclick = ()=>{
+		TEXTQUEUE.splice(0,1);
+		boxing.remove();
+		if (TEXTQUEUE.length > 0) textMake(TEXTQUEUE[0].text, TEXTQUEUE[0].image);
+	};
+}
+
 var drawCollision = (obj)=>{
 	var xDir = obj.colArea.x;
 	var yDir = obj.colArea.y;

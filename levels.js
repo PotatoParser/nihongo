@@ -661,6 +661,8 @@ async function level11(){
 		GATE1.destroy();
 		GATE2.destroy();
 		GATE3.destroy();
+		HP.restore();
+		MP.restore();
 	}
 	var trigger1 = new trigger(roomData[1][1].entities, roomData[1][1].collision, 7*SCALE, 13*SCALE, SCALE, SCALE, "S", ()=>{
 		trigger1.destroy();
