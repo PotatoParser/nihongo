@@ -389,8 +389,11 @@ class entity{
 	storeItem(item) {
 		this.storedItems.push(item);
 	}
-	addEffect(name, repetition, totalDuration, effectDuring, effectAfter){
-		if(this.effects[name] == undefined) this.effects[name] = new effect(repetition, totalDuration, effectDuring, effectAfter);
+	addEffect(name, repetition, totalDuration, effectDuring, effectAfter, effectBefore){
+		if(this.effects[name] == undefined) this.effects[name] = new effect(repetition, totalDuration, effectDuring, ()=>{
+			if (effectAfter) effectAfter(); 
+			this.effectClean(name);
+		}, effectBefore);
 	}
 	clearEffect(name) {
 		if(this.effects[name] == undefined) return;
@@ -429,6 +432,9 @@ class enemy extends entity{
 		this.type = "enemy";
 		this.gold = 1;
 		this.hitPlayer = true;
+		this.onhitdamage = 1;
+		this.damageeffect = ()=>{};
+		this.damagetime = 1000;
 		this.oncollision((c,o,i)=>{return (o.type === "enemy") ? i.old : false;});
 	}
 	death(){
@@ -438,7 +444,12 @@ class enemy extends entity{
 		this.status = "dead";				
 	}
 	damage(){
-		HP.change(-1);
+		if (!this.prop["damage"]) {
+			this.prop["damage"] = true;		
+			HP.change(-this.onhitdamage);
+			this.damageeffect();
+			setTimeout(()=>{this.prop["damage"] = false}, this.damagetime);			
+		}
 	}
 }
 class boss extends entity{
@@ -878,6 +889,10 @@ class statusBar {
 	verify(){
 		this.change(0);
 	}
+	restore() {
+		this.currentValue = this.maxValue;
+		this.update(this.currentValue);
+	}
 }
 class item {
 	constructor(image, active, passive, cooldown, repetition, properties){
@@ -942,7 +957,7 @@ class item {
 	}
 }
 class effect {
-	constructor(repetition, totalDuration, effectDuring, effectAfter){
+	constructor(repetition, totalDuration, effectDuring, effectAfter, effectBefore){
 		this.reps = repetition;
 		this.counter = 0;
 		if (this.reps !== 0) this.interval = totalDuration/this.reps;
@@ -951,6 +966,9 @@ class effect {
 		if (typeof this.during != 'function') this.during = ()=>{};
 		this.after = effectAfter;
 		if (typeof this.after != 'function') this.after = ()=>{};
+		this.before = effectBefore;
+		if (typeof this.before != 'function') this.before = ()=>{};
+		this.before();		
 		this.timer = setInterval(()=>{
 			this.counter++;
 			this.during();
@@ -967,6 +985,9 @@ class orb extends entity {
 		super(ENTITY, COLLISION, image, 0, 0, hitWidth, hitHeight, offsetX, offsetY, width, height);
 		this.x = reference.x+reference.hit.offWidth/2-this.hit.offWidth/2;
 		this.y = reference.y+reference.hit.offHeight/2-this.hit.offHeight/2;		
+		this.onhitdamage = 1;
+		this.damageeffect = ()=>{};
+		this.damagetime = 1000;
 	}
 	death(){
 		this.destroy();
@@ -974,8 +995,13 @@ class orb extends entity {
 		this.status = "dead";				
 	}
 	damage(){
-		HP.change(-1);
-	}	
+		if (!this.prop["damage"]) {
+			this.prop["damage"] = true;		
+			HP.change(-this.onhitdamage);
+			this.damageeffect();
+			setTimeout(()=>{this.prop["damage"] = false}, this.damagetime);			
+		}
+	}
 }
 class chest extends entity {
 	constructor(room, x, y){
