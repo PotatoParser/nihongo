@@ -19,6 +19,7 @@ const PLAYER = async ()=>{
 	//mainPlayer.speed = 4;	
 	mainPlayer.setSpeed(4);		
 	mainPlayer.onCursorMove("face", (mouse, playerData)=>{
+		if (mainPlayer.notmoving) return;
 		if (playerData.moving()) return;
 		if (mouse.y-32 < mainPlayer.y) playerData.index = 1;
 		else playerData.index = 0;				
@@ -34,7 +35,7 @@ const PLAYER = async ()=>{
 
 	mainPlayer.hitbox(true);
 	mainPlayer.onCursorClick("leftClick", "left", 0, (mouse, playerData)=>{
-		if (mainPlayer.includesEffect("Stunned")) return;
+		if (mainPlayer.includesEffect("Stunned") || mainPlayer.notmoving) return;
 		var canvasProp = mfpp._dimension(canvas.element);
 		if (mouse.x < canvasProp.x || mouse.y < canvasProp.y || mouse.y > canvasProp.height + canvasProp.y || mouse.x > canvasProp.x + canvasProp.width) return;
 		INVENTORY.activate(mouse, playerData);
@@ -48,6 +49,7 @@ const PLAYER = async ()=>{
 			for (var i = 0; i < temp.length; i++) {
 				INVENTORY.addItem(temp[i]);
 			}
+			GOLD+=50;
 			o.destroy();				
 			return i.old;
 		}
@@ -64,13 +66,20 @@ const PLAYER = async ()=>{
 		if (o.type == "trigger") {
 			o.trig();
 		}
+		if (o.type == "book") {
+			for (var i = 1; i <= 16; i++) {
+				console.log(INVENTORY.getSlot(i));
+				if(INVENTORY.getSlot(i).item["special"]) {
+					INVENTORY.removeItem(i);
+					o.room.unload(); level3();
+				}
+			}
+		}
 	});
 	await loadAllItems();
-	ALLITEMS["Bento Bomb"]["counter"] = 100;
-	INVENTORY.addItem(ALLITEMS["Fire Staff"]);		
-	INVENTORY.addItem(ALLITEMS["Bento Bomb"]);	
-	INVENTORY.addItem(ALLITEMS["Bento Bomb"]);		
+	var temp = setInterval(()=>{HP.change(1); MP.change(1);}, 2000);	
+	//INVENTORY.addItem(ALLITEMS["Bento Bomb"]);		
 	await globalLoad("art/woodenChest.png");	
-
+	INVENTORY.addItem(ALLITEMS["Fire Staff"]);	
 	return mainPlayer;
 }

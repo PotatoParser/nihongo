@@ -189,6 +189,7 @@ class entity{
 		this.onx = false;
 		this.ony = false;
 		this.status = "alive";
+		this.notmoving = false;
 	}
 	draw(ctx){
 		//console.log(this.img, this, JSON.parse(JSON.stringify(IMAGES)));
@@ -382,6 +383,7 @@ class entity{
 	setHP(value){
 		this.hp = value;
 		if (this.hp < 0 && typeof this.death == 'function') {
+			console.log(this.death);
 			console.log("DEATH");
 			this.death();
 		}
@@ -481,6 +483,7 @@ class player extends entity{
 		if (typeof whenDown !== 'function') whenDown = ()=>{};					
 		//whenDown = whenDown || ()=>{};
 		this.controls[keyCode] = new key(keyCode, ()=>{
+			if (this.notmoving) return;
 			if (type === "x") this.moveX(this.x+reversed*this.speed);
 			else if(type === "y") this.moveY(this.y+reversed*this.speed);
 			if (!(imageIndex === null)) this.index = imageIndex;
@@ -839,7 +842,7 @@ class inventory {
 	}
 }
 class statusBar {
-	constructor(x, y, width, height, defaultColor, currentValue, maxValue){
+	constructor(x, y, width, height, defaultColor, currentValue, maxValue, hp){
 		this.prop = {
 			x: x,
 			y: y,
@@ -858,11 +861,16 @@ class statusBar {
 		this.maxValue = maxValue;
 		this.data.innerHTML = `${this.currentValue}/${this.maxValue}`;
 		this.element.appendChild(this.data);
+		this.hp = hp;
 	}
 	update(value){
 		this.currentValue = Math.max(0, value);				
 		var percent = Math.min(value/this.maxValue, 1);
 		this.element.style.width = this.prop.width*percent + "px";
+		if (this.currentValue <= 0 && this.hp) {
+			alert("あなたは死んでいます。");
+			location.reload();
+		}
 		this.data.innerHTML = `${this.currentValue}/${this.maxValue}`;				
 	}
 	updateMax(value){
@@ -1004,8 +1012,9 @@ class orb extends entity {
 	}
 }
 class chest extends entity {
-	constructor(room, x, y){
-		super(room.entities, room.collision, ["art/woodenChest.png"], x, y, false, false, false, false, SCALE,SCALE);	
+	constructor(room, x, y, image){
+		var temp = image || "art/woodenChest.png";
+		super(room.entities, room.collision, [temp], x, y, false, false, false, false, SCALE,SCALE);	
 		this.type = "chest";
 		this.hitbox(0.125*SCALE, 0.125*SCALE, 0.75*SCALE, 0.75*SCALE);	
 	}
@@ -1066,7 +1075,7 @@ class trigger extends entity {
 }
 
 
-function textMake(text, image){
+function textMake(text, image, atEnd){
 	var temp = document.getElementById("text");
 	if (temp) {
 		TEXTQUEUE.push({text: text, image: image});
@@ -1093,6 +1102,7 @@ function textMake(text, image){
 		TEXTQUEUE.splice(0,1);
 		boxing.remove();
 		if (TEXTQUEUE.length > 0) textMake(TEXTQUEUE[0].text, TEXTQUEUE[0].image);
+		else document.dispatchEvent(new CustomEvent("doneText", { "detail": "noexe"}));
 	};
 }
 
